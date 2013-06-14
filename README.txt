@@ -30,7 +30,8 @@ sirms.py -h
 Notes
 -----
 1. You need to standardize your structures before simplex descriptors calculation.
-2. JSON-file is a dictionary of pre-computed simplexes to speed up the calculation. You can disable its usage by -n option in command line
+2. Compounds in the input sdf-file must contain titles.
+3. JSON-file is a dictionary of pre-computed simplexes to speed up the calculation. You can disable its usage by -n option in command line
 
 License
 -----
