@@ -20,7 +20,6 @@ from sdf import ReadSDF
 from files import LoadRangedProperty, LoadMixturesTxt, LoadFragments
 from ppgfunctions import *
 from canon import LoadSirmsDict, GetCanonNameByDict, GenCanonName, GetSirmsType2, GetSirmsType
-from mols import MergeMols3
 from multiprocessing import Pool, cpu_count
 from datetime import datetime
 import time
