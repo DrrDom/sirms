@@ -232,10 +232,10 @@ def CalcMixSirms(mol_list, ratio_list, single_sirms, base_bin_mix_sirms, mix_ord
             d[s_name] = d.get(s_name, 0) + min_ratio * base_bin_mix_sirms[mix_name][s_name]
     return(d)
 
-def GetBaseBinMixSirmsMP(uniq_bin_mix, mols, sirms_dict, sirms_diff, sirms_types, noH, mix_ordered, verbose):
+def GetBaseBinMixSirmsMP(uniq_bin_mix, mols, sirms_dict, sirms_diff, sirms_types, noH, mix_ordered, ncores, verbose):
     """
     return dictionary of descriptors of all binary mixtures in a dataset,
-    it doesn't take into account the raio of components
+    it doesn't take into account the ratio of components
     OUTPUT:
     {
       ("1#mol_name_1", "2#mol_name_2"): {"descriptor_1": 3, "descriptor_2": 6, ... },
@@ -246,17 +246,27 @@ def GetBaseBinMixSirmsMP(uniq_bin_mix, mols, sirms_dict, sirms_diff, sirms_types
     if verbose:
         print(' Basic binary mixtures calculation '.center(79, '-'))
     mix_set = sorted(uniq_bin_mix)
-    p = Pool(processes = cpu_count())
-    if not mix_ordered:
-        res = [p.apply_async(CalcBinMixSirms, [[mols[n1], mols[n2]], [0, 1], sirms_dict, sirms_diff, sirms_types, noH, mix_ordered, verbose]) for n1, n2 in mix_set]
+    res = []
+    if ncores == -1:
+        if not mix_ordered:
+            res = [CalcBinMixSirms([mols[n1], mols[n2]], [0, 1], sirms_dict, sirms_diff, sirms_types, noH, mix_ordered, verbose) for n1, n2 in mix_set]
+        else:
+            for n1, n2 in mix_set:
+                id1, name1 = n1.split('#', 1)
+                id2, name2 = n2.split('#', 1)
+                res.append(CalcBinMixSirms([mols[name1], mols[name2]], [id1, id2], sirms_dict, sirms_diff, sirms_types, noH, mix_ordered, verbose))
+        d = {mix_set[i]: r for i, r in enumerate(res)}
     else:
-        res = []
-        for n1, n2 in mix_set:
-            id1, name1 = n1.split('#', 1)
-            id2, name2 = n2.split('#', 1)
-            res.append(p.apply_async(CalcBinMixSirms, [[mols[name1], mols[name2]], [id1, id2], sirms_dict, sirms_diff, sirms_types, noH, mix_ordered, verbose]))
-    d = {mix_set[i]: r.get() for i, r in enumerate(res)}
-    p.close()
+        p = Pool(processes = cpu_count()) if ncores > 0 else Pool(processes = abs(ncores))
+        if not mix_ordered:
+            res = [p.apply_async(CalcBinMixSirms, [[mols[n1], mols[n2]], [0, 1], sirms_dict, sirms_diff, sirms_types, noH, mix_ordered, verbose]) for n1, n2 in mix_set]
+        else:
+            for n1, n2 in mix_set:
+                id1, name1 = n1.split('#', 1)
+                id2, name2 = n2.split('#', 1)
+                res.append(p.apply_async(CalcBinMixSirms, [[mols[name1], mols[name2]], [id1, id2], sirms_dict, sirms_diff, sirms_types, noH, mix_ordered, verbose]))
+        d = {mix_set[i]: r.get() for i, r in enumerate(res)}
+        p.close()
     return(d)
 
 def CalcSingleCompSirmsMP(mol_list, sirms_dict, opt_diff, opt_types, opt_noH, ncores, opt_verbose, frags=None):
@@ -281,8 +291,8 @@ def CalcSingleCompSirmsMP(mol_list, sirms_dict, opt_diff, opt_types, opt_noH, nc
     if opt_verbose:
         print(' Single compounds calculation '.center(79, '-'))
     d = {}
-    if ncores > 1:
-        p = Pool(processes = min(len(mol_list), ncores))
+    if abs(ncores) > 1:
+        p = Pool(processes = min(len(mol_list), abs(ncores)))
         res = [p.apply_async(CalcSingleCompSirms, [mol, sirms_dict, opt_diff, opt_types, opt_noH, opt_verbose, frags]) for mol in mol_list]
         for r in res:
             d.update(r.get())
@@ -336,8 +346,8 @@ def main():
            help='text file containing list of mixtures of components and their ratios. Names of components should be the same as in input.sdf file. The header should contain the string "!absolute ratio" or "!relative ratio".')
     parser.add_argument('-r', '--mix_ordered', action='store_true', default=False,
            help='if set this flag the mixtures will be considered ordered, otherwise as unordered')
-    parser.add_argument('-c', '--ncores', metavar='[all, 1, 2, ...]', default='1',
-           help='number of cpu cores which will be used for calculation of sirms for single compounds. All cores are always used for calculation of mixtures. Default = all. Hint: for small single compounds the best choice is 1 for highest calculation speed')
+    parser.add_argument('-c', '--ncores', metavar='[all, 1, 2, ..., -1, -2, ...]', default='1',
+           help='negative number defines number of cores which will be available for calculation of single compounds and mixtures. Positive number defines number of cores which will be available for calculation of single compounds only; all cores will be used for calculation of mixtures. Default = 1. Hint: for small single compounds and mixtures the best choice is -1 for highest calculation speed')
     parser.add_argument('-v', '--verbose', action='store_true', default=False,
            help='if set this flag progress will be printed out (may cause decrease in speed).')
     parser.add_argument('-x', '--noH', action='store_true', default=False,
@@ -378,7 +388,7 @@ def main():
         base_single_sirms = CalcSingleCompSirmsMP([m for m in mols.values() if m.title in mols_used], sirms_dict, opt_diff, opt_types, opt_noH, opt_ncores, opt_verbose)
         # calc basic sirms for all binary mixtures (no weights, all mixtures are 1:1)
         uniq_bin_mix = GetUniqBinMixNames(mix, opt_mix_ordered)
-        base_bin_mix_sirms = GetBaseBinMixSirmsMP(uniq_bin_mix, mols, sirms_dict, opt_diff, opt_types, opt_noH, opt_mix_ordered, opt_verbose)
+        base_bin_mix_sirms = GetBaseBinMixSirmsMP(uniq_bin_mix, mols, sirms_dict, opt_diff, opt_types, opt_noH, opt_mix_ordered, opt_ncores, opt_verbose)
         mix_sirms = {}
         for m_name, m in mix.items():
             mix_sirms[m_name] = CalcMixSirms([mols[mol_name] for mol_name in m['names']], m['ratios'], base_single_sirms, base_bin_mix_sirms, opt_mix_ordered)
