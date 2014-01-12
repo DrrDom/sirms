@@ -39,11 +39,11 @@ def SaveSimplexes(fname, sirms):
     # get sorted unique simplex names
     sirms_names = sorted(list(set(list(chain.from_iterable([list(s.keys()) for s in sirms.values()])))))
     compound_names = sorted([k for k in sirms.keys()])
-    f_out.write("Descriptors\t" + "\t".join(compound_names) + "\n")
-    for n in sirms_names:
+    f_out.write("Compounds\t" + "\t".join(sirms_names) + "\n")
+    for n in compound_names:
         line = []
-        for m in compound_names:
-            line.append(sirms[m].get(n, 0))
+        for m in sirms_names:
+            line.append(sirms[n].get(m, 0))
         f_out.write(n + "\t" + "\t".join(map(str, line)) + "\n")
     f_out.close()
 
