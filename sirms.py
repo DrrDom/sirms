@@ -335,7 +335,7 @@ def main():
     parser.add_argument('-n', '--nodict', action='store_true', default=False,
            help='if set this flag the simplexes will be generated slower but this procedure can handle any bond types, while the other approach (which uses dictionary) can handle structures containing only 0-4 bond types')
     parser.add_argument('-d', '--diff', metavar='', default=['elm'], nargs='*',
-           help='list of atom labeling schemes separated by space, allowed values: type, elm, chg, lip. Charges and lipophilicity should be calculated in HiTQSAR and saved with the same names as sdf-file and extensions .chg and .lip correspondingly along with sdf-file. In the same folder the "setup.txt" file should be stored. Default value = elm')
+           help='list of atom labeling schemes separated by space. Built-in scheme is element (elm). To include other schemes user should specify corresponding keyword, which is an extension of the file containing atomic characteristics of each compound. Name of the file should be equal to the name of sdf input file. Default value = elm')
     parser.add_argument('-t', '--types', metavar='', default='all',
            choices=['all', 'bounded', 'extended'],
            help='list of simplex types which should be calculated. There three possible values: all, bounded=5,6,8-11, extended=3-11. Default value = all')
