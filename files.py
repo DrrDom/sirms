@@ -35,30 +35,40 @@ def LoadRangedProperty(mols, setup_dir, prop_fname):
         print('Property label was not assigned.')
         return(None)
 
+    def ReadPropertyFile(fname):
+        f = open(fname)
+        sep = '---'
+        d = {}
+        f.readline() # header
+        # read each mol as list of lists where inner list is ['atom_id', 'value']
+        while True:
+            line = f.readline()
+            if not line: break
+            if line.strip() == sep:
+                title = f.readline().strip()
+                d[title] = list()
+                continue
+            d[title].append(line.strip().split())
+        f.close()
+        # sort values for each mol by atom_id and keep values only
+        for k in d.keys():
+            d[k].sort(key=lambda x: int(x[0]))
+            d[k] = [float(i[1]) for i in d[k]]
+        return(d)
+
     try:
         fsetup = open(os.path.join(setup_dir, 'setup.txt'))
     except:
-        print('File setip.txt cannot be found in the folder containing input sdf file.')
+        print('File setup.txt cannot be found in the folder containing input sdf file.')
         exit()
-    prop_name = prop_fname[-3:]
+    prop_name = os.path.splitext(os.path.basename(prop_fname))[1][1:]
     prop_range = ReturnPropertyRange(fsetup, prop_name)
     fsetup.close()
     if prop_range is None:
         print('Cannot find "%s" property in setup.txt' % prop_name)
         exit()
     # read property file
-    f = open(os.path.join(setup_dir, prop_fname))
-    sep = '-'*10
-    d = {}
-    while True:
-        line = f.readline()
-        if not line: break
-        if line[0:10] == sep:
-            title = f.readline().split('.')[0]
-            n = int(f.readline().strip())
-            tmp = f.readline()
-            d[title] = list(map(float, [f.readline().split()[1] for i in range(n)]))
-    f.close()
+    d = ReadPropertyFile(os.path.join(setup_dir, prop_fname))
     # assign property values to atoms
     for m in mols.values():
         values = d[m.title]

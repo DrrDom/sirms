@@ -51,11 +51,9 @@ def SaveSimplexes(fname, sirms):
 # SIRMS
 
 def SetLabels(mols, opt_diff, input_fname):
-    if 'type' in opt_diff:
-        for m in mols.values():
-            m.SetSybylTypes()
-    if 'chg' in opt_diff: LoadRangedProperty(mols, os.path.join(os.path.abspath(os.path.dirname(input_fname))), GetFileNameNoExt(input_fname) + '.chg')
-    if 'lip' in opt_diff: LoadRangedProperty(mols, os.path.join(os.path.abspath(os.path.dirname(input_fname))), GetFileNameNoExt(input_fname) + '.lip')
+    for s_diff in opt_diff:
+        if s_diff != "elm":
+            LoadRangedProperty(mols, os.path.join(os.path.abspath(os.path.dirname(input_fname))), GetFileNameNoExt(input_fname) + '.' + s_diff)
     return(None)
 
 def CalcSingleCompSirms(mol, sirms_dict, diff_list, sirms_types, noH, verbose, frags=None):
@@ -337,7 +335,6 @@ def main():
     parser.add_argument('-n', '--nodict', action='store_true', default=False,
            help='if set this flag the simplexes will be generated slower but this procedure can handle any bond types, while the other approach (which uses dictionary) can handle structures containing only 0-4 bond types')
     parser.add_argument('-d', '--diff', metavar='', default=['elm'], nargs='*',
-           choices=['elm', 'type', 'lip', 'chg'],
            help='list of atom labeling schemes separated by space, allowed values: type, elm, chg, lip. Charges and lipophilicity should be calculated in HiTQSAR and saved with the same names as sdf-file and extensions .chg and .lip correspondingly along with sdf-file. In the same folder the "setup.txt" file should be stored. Default value = elm')
     parser.add_argument('-t', '--types', metavar='', default='all',
            choices=['all', 'bounded', 'extended'],
