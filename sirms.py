@@ -30,9 +30,9 @@ import time
 def SaveSimplexes(fname, sirms):
     """
     Save calculated decriptors in the tab-delimited text file format
-    Descriptors   compound_1  compound_2  ...  compound_n
-    descriptor_1           5           2                0
-    descriptor_2           1           1                4
+    Descriptors   descriptor_1  descriptor_2  ...  descriptor_n
+    compound_1               5             2                  0
+    compound_2               1             1                  4
     ...
     """
     f_out = open(fname, 'wt')
