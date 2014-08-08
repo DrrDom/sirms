@@ -27,6 +27,10 @@ Help
 -----
 sirms.py -h
 
+Wiki
+-----
+See wiki pages for more information.
+
 Notes
 -----
 1. You need to standardize your structures before simplex descriptors calculation.
