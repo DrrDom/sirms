@@ -16,9 +16,10 @@ class Mol3:
         self.atoms = {}
         self.bonds = dict()
         self.title = ""
-        self.component_ratios = {}  # {id1: value1, id2, value2}
-    def AddAtom(self, id, label, x, y, z):
-        self.atoms[id] = {'label': label, 'x': x, 'y': y, 'z': z, 'property': {}, 'component_id': None}
+    def AddAtom(self, id, label, x, y, z, formal_charge):
+        self.atoms[id] = {'label': label, 'x': x, 'y': y, 'z': z,
+                          'property': {},
+                          'formal_charge': formal_charge}
         self.bonds[id] = dict()
     def AddBond(self, id1, id2, bond_type):
         if id1 not in self.bonds.keys():

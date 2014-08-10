@@ -13,6 +13,15 @@ import os, sys
 
 from mols import Mol3 as Mol
 
+formal_charges_table = {'0': 0,
+                        '1': 3,
+                        '2': 2,
+                        '3': 1,
+                        '4': 0,
+                        '5': -1,
+                        '6': -2,
+                        '7': -3}
+
 def ReadSDF(fname):
     """
     INPUT: sdf-filename
@@ -31,8 +40,9 @@ def ReadSDF(fname):
             y = float(line[10:20])
             z = float(line[20:30])
             label = line[30:33].strip()
+            formal_charge = line[36:39].strip()
             id += 1
-            mol.AddAtom(id, label, x, y, z)
+            mol.AddAtom(id, label, x, y, z, formal_charges_table[formal_charge])
         # read bonds
         for line in molstr[4+natoms:4+natoms+nbonds]:
             id1 = int(line[0:3])
