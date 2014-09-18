@@ -21,3 +21,6 @@ def GetFileNameNoExt(path):
 
 def GetFileExt(path):
     return(os.path.splitext(os.path.basename(path)))[1]
+
+def GetWorkDir(filename):
+    return(os.path.abspath(os.path.dirname(filename)))

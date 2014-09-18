@@ -32,3 +32,4 @@ class Mol3:
             return(self.bonds[id1][id2])
         except KeyError:
             return(0)
+

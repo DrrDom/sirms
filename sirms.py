@@ -14,15 +14,14 @@
 #-------------------------------------------------------------------------------
 #!/usr/bin/env python
 
-import sys, os, argparse
+import os, argparse
+import time
+import files
 from itertools import combinations, chain, product
 from sdf import ReadSDF
-from files import LoadRangedProperty, LoadMixturesTxt, LoadFragments
 from ppgfunctions import *
 from canon import LoadSirmsDict, GetCanonNameByDict, GenCanonName, GetSirmsType2, GetSirmsType
 from multiprocessing import Pool, cpu_count
-from datetime import datetime
-import time
 
 #===============================================================================
 # Save simplexes
@@ -53,8 +52,9 @@ def SaveSimplexes(fname, sirms):
 def SetLabels(mols, opt_diff, input_fname):
     for s_diff in opt_diff:
         if s_diff != "elm":
-            LoadRangedProperty(mols, os.path.join(os.path.abspath(os.path.dirname(input_fname))), GetFileNameNoExt(input_fname) + '.' + s_diff)
+            files.LoadRangedProperty(mols, GetWorkDir(input_fname), GetFileNameNoExt(input_fname) + '.' + s_diff)
     return(None)
+
 
 def CalcSingleCompSirms(mol, sirms_dict, diff_list, sirms_types, noH, verbose, frags=None):
     """
@@ -372,15 +372,20 @@ def main():
         if o == "noH": opt_noH = v
         if o == "fragments": frag_fname = v
 
-    mols = ReadSDF(in_fname)
-    SetLabels(mols, opt_diff, in_fname)
+    # define which property will be loaded from external file or from sdf-file
+    opt_diff_sdf = files.NotExistedPropertyFiles(opt_diff, in_fname)
+    opt_diff_ext = [el for el in opt_diff if el not in opt_diff_sdf]
+    mols = ReadSDF(in_fname,
+                   opt_diff_sdf,
+                   os.path.join(GetWorkDir(in_fname), "setup.txt"))
+    SetLabels(mols, opt_diff_ext, in_fname)
     if mix_fname is None:
-        frags = LoadFragments(frag_fname)
+        frags = files.LoadFragments(frag_fname)
         # calc simplex descriptors
         sirms = CalcSingleCompSirmsMP([m for m in mols.values()], sirms_dict, opt_diff, opt_types, opt_noH, opt_ncores, opt_verbose, frags)
         SaveSimplexes(out_fname, sirms)
     else:
-        mix = LoadMixturesTxt(mix_fname)
+        mix = files.LoadMixturesTxt(mix_fname)
         mols_used = set(chain.from_iterable([m['names'] for m in mix.values()]))
         base_single_sirms = CalcSingleCompSirmsMP([m for m in mols.values() if m.title in mols_used], sirms_dict, opt_diff, opt_types, opt_noH, opt_ncores, opt_verbose)
         # calc basic sirms for all binary mixtures (no weights, all mixtures are 1:1)

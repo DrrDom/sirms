@@ -12,6 +12,7 @@
 import os, sys
 
 from mols import Mol3 as Mol
+from files import ReadPropertyRange, RangedLetter
 
 formal_charges_table = {'0': 0,
                         '1': 3,
@@ -22,13 +23,13 @@ formal_charges_table = {'0': 0,
                         '6': -2,
                         '7': -3}
 
-def ReadSDF(fname):
+def ReadSDF(fname, opt_diff, fsetup):
     """
     INPUT: sdf-filename
     OUTPUT: dict of molecules, where key is the title of the moleculae taken from the first line of mol-record
     """
 
-    def MolstrToMol(molstr):
+    def MolstrToMol(molstr, opt_diff):
         mol = Mol()
         mol.title = molstr[0]
         natoms = int(molstr[3][0:3])
@@ -49,6 +50,25 @@ def ReadSDF(fname):
             id2 = int(line[3:6])
             bond_type = int(line[6:9])
             mol.AddBond(id1, id2, bond_type)
+        # read specified fields
+        if opt_diff:
+            # prepare data field; missing values in data string is replaced by 9999
+            opt_diff = [el.lower() for el in opt_diff]
+            data_dict = dict()
+            i = 4 + natoms + nbonds
+            while i < len(molstr) - 1:
+                line = molstr[i].strip()[4:-1].lower()
+                if line in opt_diff:
+                    i += 1
+                    s = molstr[i].strip().split(";")
+                    data_dict[line] = [float(el.replace(",", ".")) if el != "" else None for el in s]
+                i += 1
+            # add labels
+            for prop_name in data_dict.keys():
+                prop_range = ReadPropertyRange(fsetup, prop_name)
+                for i, a in enumerate(sorted(mol.atoms.keys())):
+                    mol.atoms[a]['property'][prop_name] = {'value': data_dict[prop_name][i],
+                                                           'label': RangedLetter(data_dict[prop_name][i], prop_range)}
         return mol
 
     mols = {}
@@ -58,7 +78,7 @@ def ReadSDF(fname):
         if line.find("$$$$") < 0:
             molstr.append(line.rstrip())
         else:
-            m = MolstrToMol(molstr)
+            m = MolstrToMol(molstr, opt_diff)
             mols[m.title] = m
             molstr = []
     return mols

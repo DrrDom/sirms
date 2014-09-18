@@ -10,30 +10,54 @@
 #-------------------------------------------------------------------------------
 
 import os
+from string import ascii_uppercase
+from ppgfunctions import GetFileNameNoExt, GetWorkDir
+
+
+def NotExistedPropertyFiles(opt_diff, input_fname):
+    """
+    Checks property files existence and returns names of not existed property files,
+    these properties will be loaded from the initial sdf file
+    """
+    output = []
+    for s_diff in opt_diff:
+        if s_diff != "elm":
+            if not os.path.isfile(os.path.join(GetWorkDir(input_fname),
+                                               GetFileNameNoExt(input_fname) + '.' + s_diff)):
+                output.append(s_diff)
+    return(output)
+
+
+def ReadPropertyRange(file_setup_name, prop_name):
+    try:
+        f = open(file_setup_name)
+    except:
+        print('File setup.txt cannot be found in the folder containing input sdf file.')
+        exit()
+    res = None
+    for line in f:
+        if prop_name == line.split('=')[0]:
+            res = list(map(float, line.strip().split('=')[1].split('<')))
+            break
+    f.close()
+    return(res)
+
+
+def RangedLetter(value, prop_range, none_label="NA"):
+    if value is None:
+        return(none_label)
+    if value <= prop_range[0]:
+        return('A')
+    for i in range(1, len(prop_range)):
+        if prop_range[i-1] < value <= prop_range[i]:
+            return(ascii_uppercase[i])
+        if i == len(prop_range)-1 and value > prop_range[-1]:
+            return(ascii_uppercase[i+1])
+    print('Property label was not assigned.')
+    return(None)
+
 
 def LoadRangedProperty(mols, setup_dir, prop_fname):
-
-    def ReturnPropertyRange(f, prop_name):
-        res = None
-        for line in f:
-            if prop_name == line.split('=')[0]:
-                res = list(map(float, line.strip().split('=')[1].split('<')))
-                break
-        return(res)
-
-    def RangedLetter(value, prop_range):
-        s = 'ABCDEFGHJKLMNOP'
-        if value <= prop_range[0]:
-            return('A')
-        for i in range(len(prop_range)):
-            if i == 0 and value <= prop_range[0]:
-                return('A')
-            if prop_range[i-1] < value <= prop_range[i]:
-                return(s[i])
-            if i == len(prop_range)-1 and value > prop_range[-1]:
-                return(s[i+1])
-        print('Property label was not assigned.')
-        return(None)
 
     def ReadPropertyFile(fname):
         f = open(fname)
@@ -56,14 +80,8 @@ def LoadRangedProperty(mols, setup_dir, prop_fname):
             d[k] = [float(i[1]) for i in d[k]]
         return(d)
 
-    try:
-        fsetup = open(os.path.join(setup_dir, 'setup.txt'))
-    except:
-        print('File setup.txt cannot be found in the folder containing input sdf file.')
-        exit()
     prop_name = os.path.splitext(os.path.basename(prop_fname))[1][1:]
-    prop_range = ReturnPropertyRange(fsetup, prop_name)
-    fsetup.close()
+    prop_range = ReadPropertyRange(os.path.join(setup_dir, 'setup.txt'), prop_name)
     if prop_range is None:
         print('Cannot find "%s" property in setup.txt' % prop_name)
         exit()
