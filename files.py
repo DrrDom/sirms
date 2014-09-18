@@ -76,7 +76,11 @@ def LoadRangedProperty(mols, setup_dir, prop_fname):
         # sort values for each mol by atom_id and keep values only
         for k in d.keys():
             d[k].sort(key=lambda x: int(x[0]))
-            d[k] = [float(i[1]) for i in d[k]]
+            # if value is not numeric remain it as is (as string)
+            try:
+                d[k] = [float(i[1]) for i in d[k]]
+            except ValueError:
+                d[k] = [i[1] for i in d[k]]
         return (d)
 
     prop_name = os.path.splitext(os.path.basename(prop_fname))[1][1:]
@@ -90,7 +94,9 @@ def LoadRangedProperty(mols, setup_dir, prop_fname):
     for m in mols.values():
         values = d[m.title]
         for i, a in enumerate(sorted(m.atoms.keys())):
-            m.atoms[a]['property'][prop_name] = {'value': values[i], 'label': RangedLetter(values[i], prop_range)}
+            # if label is string use it as label, otherwise use ranges
+            label = values[i] if type(values[i]) is str else RangedLetter(values[i], prop_range)
+            m.atoms[a]['property'][prop_name] = {'value': values[i], 'label': label}
 
 
 def LoadMixturesTxt(fname):

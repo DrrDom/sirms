@@ -61,14 +61,19 @@ def ReadSDF(fname, opt_diff, fsetup):
                 if line in opt_diff:
                     i += 1
                     s = molstr[i].strip().split(";")
-                    data_dict[line] = [float(el.replace(",", ".")) if el != "" else None for el in s]
+                    try:
+                        data_dict[line] = [float(el.replace(",", ".")) if el != "" else None for el in s]
+                    except ValueError:
+                        data_dict[line] = [el if el != "" else None for el in s]
                 i += 1
             # add labels
             for prop_name in data_dict.keys():
                 prop_range = ReadPropertyRange(fsetup, prop_name)
                 for i, a in enumerate(sorted(mol.atoms.keys())):
+                    # if value is numeric use ranges, if value is string use it as label itself
+                    label = data_dict[prop_name][i] if type(data_dict[prop_name][i]) is str else RangedLetter(data_dict[prop_name][i], prop_range)
                     mol.atoms[a]['property'][prop_name] = {'value': data_dict[prop_name][i],
-                                                           'label': RangedLetter(data_dict[prop_name][i], prop_range)}
+                                                           'label': label}
         return mol
 
     mols = {}
