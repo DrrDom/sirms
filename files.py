@@ -25,7 +25,7 @@ def NotExistedPropertyFiles(opt_diff, input_fname):
             if not os.path.isfile(os.path.join(GetWorkDir(input_fname),
                                                GetFileNameNoExt(input_fname) + '.' + s_diff)):
                 output.append(s_diff)
-    return(output)
+    return (output)
 
 
 def ReadPropertyRange(file_setup_name, prop_name):
@@ -40,30 +40,29 @@ def ReadPropertyRange(file_setup_name, prop_name):
             res = list(map(float, line.strip().split('=')[1].split('<')))
             break
     f.close()
-    return(res)
+    return (res)
 
 
 def RangedLetter(value, prop_range, none_label="NA"):
     if value is None:
-        return(none_label)
+        return (none_label)
     if value <= prop_range[0]:
-        return('A')
+        return ('A')
     for i in range(1, len(prop_range)):
-        if prop_range[i-1] < value <= prop_range[i]:
-            return(ascii_uppercase[i])
-        if i == len(prop_range)-1 and value > prop_range[-1]:
-            return(ascii_uppercase[i+1])
+        if prop_range[i - 1] < value <= prop_range[i]:
+            return (ascii_uppercase[i])
+        if i == len(prop_range) - 1 and value > prop_range[-1]:
+            return (ascii_uppercase[i + 1])
     print('Property label was not assigned.')
-    return(None)
+    return (None)
 
 
 def LoadRangedProperty(mols, setup_dir, prop_fname):
-
     def ReadPropertyFile(fname):
         f = open(fname)
         sep = '---'
         d = {}
-        f.readline() # header
+        f.readline()  # header
         # read each mol as list of lists where inner list is ['atom_id', 'value']
         while True:
             line = f.readline()
@@ -78,7 +77,7 @@ def LoadRangedProperty(mols, setup_dir, prop_fname):
         for k in d.keys():
             d[k].sort(key=lambda x: int(x[0]))
             d[k] = [float(i[1]) for i in d[k]]
-        return(d)
+        return (d)
 
     prop_name = os.path.splitext(os.path.basename(prop_fname))[1][1:]
     prop_range = ReadPropertyRange(os.path.join(setup_dir, 'setup.txt'), prop_name)
@@ -123,20 +122,21 @@ def LoadMixturesTxt(fname):
     elif header.strip() == '!relative ratio':
         abs_ratio = False
     else:
-        raise Exception('The first line of mixtures.txt file should contain the header "!absolute ratio" or "!relative ratio"')
+        raise Exception(
+            'The first line of mixtures.txt file should contain the header "!absolute ratio" or "!relative ratio"')
         sys.exit()
     while True:
         line = f.readline()
         if not line: break
         tmp = line.strip().split('\t')
-        mix_num = len(tmp)//2
+        mix_num = len(tmp) // 2
         mol_names = tmp[:mix_num]
-        mol_ratios = list(map(float, tmp[(len(tmp)//2):]))
+        mol_ratios = list(map(float, tmp[(len(tmp) // 2):]))
         if not abs_ratio:
             mol_ratios = [v / sum(mol_ratios) for v in mol_ratios]
         mix_name = '+'.join([mol_names[i] + '_(' + str(mol_ratios[i]) + ')' for i in range(mix_num)])
         d[mix_name] = {'names': mol_names, 'ratios': mol_ratios}
-    return(d)
+    return (d)
 
 
 def LoadFragments(fname):
@@ -156,7 +156,7 @@ def LoadFragments(fname):
     }
     """
     if fname is None:
-        return(None)
+        return (None)
     d = {}
     f = open(fname, 'rt')
     for line in f:
@@ -165,4 +165,4 @@ def LoadFragments(fname):
             d[tmp[0]] = {}
         d[tmp[0]][tmp[1]] = list(map(int, tmp[2:]))
     f.close()
-    return(d)
+    return (d)

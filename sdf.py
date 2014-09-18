@@ -9,7 +9,6 @@
 # Licence:     GPLv3
 #-------------------------------------------------------------------------------
 
-import os, sys
 
 from mols import Mol3 as Mol
 from files import ReadPropertyRange, RangedLetter
@@ -22,6 +21,7 @@ formal_charges_table = {'0': 0,
                         '5': -1,
                         '6': -2,
                         '7': -3}
+
 
 def ReadSDF(fname, opt_diff, fsetup):
     """
@@ -36,7 +36,7 @@ def ReadSDF(fname, opt_diff, fsetup):
         nbonds = int(molstr[3][3:6])
         # read atoms
         id = 0
-        for line in molstr[4:4+natoms]:
+        for line in molstr[4:4 + natoms]:
             x = float(line[0:10])
             y = float(line[10:20])
             z = float(line[20:30])
@@ -45,7 +45,7 @@ def ReadSDF(fname, opt_diff, fsetup):
             id += 1
             mol.AddAtom(id, label, x, y, z, formal_charges_table[formal_charge])
         # read bonds
-        for line in molstr[4+natoms:4+natoms+nbonds]:
+        for line in molstr[4 + natoms:4 + natoms + nbonds]:
             id1 = int(line[0:3])
             id2 = int(line[3:6])
             bond_type = int(line[6:9])
