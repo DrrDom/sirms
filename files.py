@@ -155,8 +155,9 @@ def LoadFragments(fname):
     Output dict of molecules which are dict of fragments with corresponding atom ids
     { "mol_name_1":
         {
-          "frag_name_1": [atom_id1, atom_id2, ...],
-          "frag_name_2": [atom_id1, atom_id2, ...]
+          "frag_name_1#0": [atom_id1, atom_id2, ...],
+          "frag_name_1#1": [atom_id1, atom_id2, ...],
+          "frag_name_2#0": [atom_id1, atom_id2, ...]
         }
       ...
     }
@@ -169,6 +170,6 @@ def LoadFragments(fname):
         tmp = line.strip().split("\t")
         if tmp[0] not in d.keys():
             d[tmp[0]] = {}
-        d[tmp[0]][tmp[1]] = list(map(int, tmp[2:]))
+        d[tmp[0]][tmp[1] + "#" + str(len(d[tmp[0]]))] = list(map(int, tmp[2:]))
     f.close()
     return (d)

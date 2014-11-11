@@ -55,7 +55,7 @@ bin_s_types = {(1, 0, 0, 1, 1, 1): 8, (0, 1, 0, 1, 1, 0): 6, (0, 1, 1, 1, 0, 1):
 
 
 def LoadSirmsDict():
-    f = open(os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])), 'short_sirms_dict.json'))
+    f = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'short_sirms_dict.json'))
     tmp = json.load(f)
     f.close()
     return (tmp)

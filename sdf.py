@@ -43,7 +43,7 @@ def ReadSDF(fname, opt_diff, fsetup):
             label = line[30:33].strip()
             formal_charge = line[36:39].strip()
             id += 1
-            mol.AddAtom(id, label, x, y, z, formal_charges_table[formal_charge])
+            mol.AddAtom(id, label, x, y, z, formal_charges_table.get(formal_charge, 0))
         # read bonds
         for line in molstr[4 + natoms:4 + natoms + nbonds]:
             id1 = int(line[0:3])

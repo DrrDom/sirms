@@ -26,7 +26,7 @@ from multiprocessing import Pool, cpu_count
 #===============================================================================
 # Save simplexes
 
-def SaveSimplexes(fname, sirms):
+def SaveSimplexes(fname, sirms, ndigits=5):
     """
     Save calculated decriptors in the tab-delimited text file format
     Descriptors   descriptor_1  descriptor_2  ...  descriptor_n
@@ -39,10 +39,12 @@ def SaveSimplexes(fname, sirms):
     sirms_names = sorted(list(set(list(chain.from_iterable([list(s.keys()) for s in sirms.values()])))))
     compound_names = sorted([k for k in sirms.keys()])
     f_out.write("Compounds\t" + "\t".join(sirms_names) + "\n")
+    s = "{:." + str(ndigits) + "f}"
     for n in compound_names:
         line = []
         for m in sirms_names:
-            line.append(sirms[n].get(m, 0))
+            value = sirms[n].get(m, 0)
+            line.append(s.format(value))
         f_out.write(n + "\t" + "\t".join(map(str, line)) + "\n")
     f_out.close()
 
@@ -94,7 +96,8 @@ def CalcSingleCompSirms(mol, sirms_dict, diff_list, sirms_types, noH, verbose, f
 
     for a in combinations(atoms, 4):
         # if simplex is of non-allowed type it will not be calculated
-        if GetSirmsType2(mol, a) not in sirms_types: continue
+        if GetSirmsType2(mol, a) not in sirms_types:
+            continue
         # start simplex calculation
         bonds = [mol.GetBondType(b[0], b[1]) for b in combinations(a, 2)]
         for s_diff in diff_list:
@@ -134,7 +137,7 @@ def CalcBinMixSirms(mol_list, id_list, sirms_dict, diff_list, sirms_types, noH, 
     Calculate simplex descriptors which belong only to both components of a binary mixture
     INPUT:
         mol_list: list of two MOL objects
-        id_list: list of index number of a compunent in ordered mixtures,
+        id_list: list of index number of a component in ordered mixtures,
             for unordered mixtures this list can be of any value, since it
             doesn't use further
     OUTPUT: dict of descriptors
@@ -212,7 +215,7 @@ def CalcMixSirms(mol_list, ratio_list, single_sirms, base_bin_mix_sirms, mix_ord
                    given in a dataset text file
         ratio_list - list of ratio of each component given in the same order
     OUTPUT:
-        dict of weighted descriptors for a mixture accordin to given ratio of components
+        dict of weighted descriptors for a mixture according to given ratio of components
     """
     d = {}
     # descriptors from separate components
@@ -349,53 +352,13 @@ def GetUniqBinMixNames(mix, ordered):
 #===============================================================================
 # Main cycle
 
-def main():
-    parser = argparse.ArgumentParser(description='Calculate simplex descriptors for molecules in sdf-file.')
-    parser.add_argument('-i', '--in', metavar='input.sdf', required=True,
-                        help='input sdf file with standartized structures, molecules should have titles')
-    parser.add_argument('-o', '--out', metavar='output.txt', required=True,
-                        help='output txt file with calculated descriptors')
-    parser.add_argument('-n', '--nodict', action='store_true', default=False,
-                        help='if set this flag the simplexes will be generated slower but this procedure can handle any bond types, while the other approach (which uses dictionary) can handle structures containing only 0-4 bond types')
-    parser.add_argument('-d', '--diff', metavar='', default=['elm'], nargs='*',
-                        help='list of atom labeling schemes separated by space. Built-in scheme is element (elm). To include other schemes user should specify corresponding keyword, which is an extension of the file containing atomic characteristics of each compound. Name of the file should be equal to the name of sdf input file. Default value = elm')
-    parser.add_argument('-t', '--types', metavar='', default='all',
-                        choices=['all', 'bounded', 'extended'],
-                        help='list of simplex types which should be calculated. There three possible values: all, bounded=5,6,8-11, extended=3-11. Default value = all')
-    parser.add_argument('-m', '--mixtures', metavar='mixtures.txt',
-                        help='text file containing list of mixtures of components and their ratios. Names of components should be the same as in input.sdf file. The header should contain the string "!absolute ratio" or "!relative ratio".')
-    parser.add_argument('-r', '--mix_ordered', action='store_true', default=False,
-                        help='if set this flag the mixtures will be considered ordered, otherwise as unordered')
-    parser.add_argument('-c', '--ncores', metavar='[all, 1, 2, ..., -1, -2, ...]', default='1',
-                        help='negative number defines number of cores which will be available for calculation of single compounds and mixtures. Positive number defines number of cores which will be available for calculation of single compounds only; all cores will be used for calculation of mixtures. Default = 1. Hint: for small single compounds and mixtures the best choice is -1 for highest calculation speed')
-    parser.add_argument('-v', '--verbose', action='store_true', default=False,
-                        help='if set this flag progress will be printed out (may cause decrease in speed).')
-    parser.add_argument('-x', '--noH', action='store_true', default=False,
-                        help='if set this flag hydrogen atoms will be excluded from the simplexes calculation')
-    parser.add_argument('-f', '--fragments', metavar='fragments.txt',
-                        help='text file containing list of names of single compounds, fragment names and atom indexes of fragment in the structure of corresponding compound')
+def main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname, opt_mix_ordered, opt_ncores,
+                opt_verbose, opt_noH, frag_fname):
 
-    args = vars(parser.parse_args())
-    opt_mix_ordered = None
-    for o, v in args.items():
-        if o == "in": in_fname = v
-        if o == "out": out_fname = v
-        if o == "nodict":
-            if v:
-                sirms_dict = {}
-            else:
-                sirms_dict = LoadSirmsDict()
-        if o == "diff": opt_diff = v
-        if o == "types":
-            if v == "all": opt_types = list(range(1, 12))
-            if v == "bounded": opt_types = [5, 6, 8, 9, 10, 11]
-            if v == "extended": opt_types = list(range(3, 12))
-        if o == "mixtures": mix_fname = v
-        if o == "mix_ordered": opt_mix_ordered = v
-        if o == "ncores": opt_ncores = cpu_count() if v == "all" else int(v)
-        if o == "verbose": opt_verbose = v
-        if o == "noH": opt_noH = v
-        if o == "fragments": frag_fname = v
+    if opt_no_dict:
+        sirms_dict = {}
+    else:
+        sirms_dict = LoadSirmsDict()
 
     # define which property will be loaded from external file or from sdf-file
     opt_diff_sdf = files.NotExistedPropertyFiles(opt_diff, in_fname)
@@ -424,6 +387,68 @@ def main():
             mix_sirms[m_name] = CalcMixSirms([mols[mol_name] for mol_name in m['names']], m['ratios'],
                                              base_single_sirms, base_bin_mix_sirms, opt_mix_ordered)
         SaveSimplexes(out_fname, mix_sirms)
+
+
+def main():
+
+    parser = argparse.ArgumentParser(description='Calculate simplex descriptors for molecules in sdf-file.')
+    parser.add_argument('-i', '--in', metavar='input.sdf', required=True,
+                        help='input sdf file with standardized structures, molecules should have titles')
+    parser.add_argument('-o', '--out', metavar='output.txt', required=True,
+                        help='output txt file with calculated descriptors')
+    parser.add_argument('-n', '--nodict', action='store_true', default=False,
+                        help='if set this flag the simplexes will be generated slower but this procedure can handle '
+                             'any bond types, while the other approach (which uses dictionary) can handle structures '
+                             'containing only 0-4 bond types')
+    parser.add_argument('-d', '--diff', metavar='', default=['elm'], nargs='*',
+                        help='list of atom labeling schemes separated by space. Built-in scheme is element (elm). '
+                             'To include other schemes user should specify corresponding keyword, which is an '
+                             'extension of the file containing atomic characteristics of each compound. '
+                             'Name of the file should be equal to the name of sdf input file. Default value = elm')
+    parser.add_argument('-t', '--types', metavar='', default='all',
+                        choices=['all', 'bounded', 'extended'],
+                        help='list of simplex types which should be calculated. There three possible values: all, '
+                             'bounded=5,6,8-11, extended=3-11. Default value = all')
+    parser.add_argument('-m', '--mixtures', metavar='mixtures.txt', default=None,
+                        help='text file containing list of mixtures of components and their ratios. Names of components '
+                             'should be the same as in input.sdf file. The header should contain the string '
+                             '"!absolute ratio" or "!relative ratio".')
+    parser.add_argument('-r', '--mix_ordered', action='store_true', default=False,
+                        help='if set this flag the mixtures will be considered ordered, otherwise as unordered')
+    parser.add_argument('-c', '--ncores', metavar='[all, 1, 2, ..., -1, -2, ...]', default='1',
+                        help='negative number defines number of cores which will be available for calculation of '
+                             'single compounds and mixtures. Positive number defines number of cores which will be '
+                             'available for calculation of single compounds only; all cores will be used for '
+                             'calculation of mixtures. Default = 1. Hint: for small single compounds and mixtures '
+                             'the best choice is -1 for highest calculation speed')
+    parser.add_argument('-v', '--verbose', action='store_true', default=False,
+                        help='if set this flag progress will be printed out (may cause decrease in speed).')
+    parser.add_argument('-x', '--noH', action='store_true', default=False,
+                        help='if set this flag hydrogen atoms will be excluded from the simplexes calculation')
+    parser.add_argument('-f', '--fragments', metavar='fragments.txt', default=None,
+                        help='text file containing list of names of single compounds, fragment names and atom '
+                             'indexes of fragment in the structure of corresponding compound')
+
+    args = vars(parser.parse_args())
+    opt_mix_ordered = None
+    for o, v in args.items():
+        if o == "in": in_fname = v
+        if o == "out": out_fname = v
+        if o == "nodict": opt_no_dict = v
+        if o == "diff": opt_diff = v
+        if o == "types":
+            if v == "all": opt_types = list(range(1, 12))
+            if v == "bounded": opt_types = [5, 6, 8, 9, 10, 11]
+            if v == "extended": opt_types = list(range(3, 12))
+        if o == "mixtures": mix_fname = v
+        if o == "mix_ordered": opt_mix_ordered = v
+        if o == "ncores": opt_ncores = cpu_count() if v == "all" else int(v)
+        if o == "verbose": opt_verbose = v
+        if o == "noH": opt_noH = v
+        if o == "fragments": frag_fname = v
+
+    main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname, opt_mix_ordered, opt_ncores,
+                opt_verbose, opt_noH, frag_fname)
 
 
 if __name__ == '__main__':
