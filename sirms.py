@@ -44,7 +44,13 @@ def SaveSimplexes(fname, sirms, ndigits=5):
         line = []
         for m in sirms_names:
             value = sirms[n].get(m, 0)
-            line.append(s.format(value))
+            # round floating point values, all others will be remained unchanged
+            if value.is_integer():
+                line.append(str(int(value)))
+            elif isinstance(value, float):
+                line.append(s.format(value))
+            else:
+                line.append(str(value))
         f_out.write(n + "\t" + "\t".join(map(str, line)) + "\n")
     f_out.close()
 
