@@ -9,14 +9,14 @@
 # Licence:     GPLv3
 #-------------------------------------------------------------------------------
 
-from collections import defaultdict
-
+from itertools import combinations
 
 class Mol3:
     def __init__(self):
         self.atoms = {}
         self.bonds = dict()
         self.title = ""
+        self.stereo = False
 
     def AddAtom(self, id, label, x, y, z, formal_charge):
         self.atoms[id] = {'label': label, 'x': x, 'y': y, 'z': z,
@@ -29,11 +29,47 @@ class Mol3:
             self.bonds[id1] = dict()
         if id2 not in self.bonds.keys():
             self.bonds[id2] = dict()
-        self.bonds[id1][id2] = self.bonds[id2][id1] = bond_type
+        # bond value is a tuple: 1 - bond order, 2 - double bond stereo type (0 - unspecified, 1 - cis, 2 -trans)
+        self.bonds[id1][id2] = self.bonds[id2][id1] = (bond_type, 0)
+
+    def GetBondOrder(self, id1, id2):
+        try:
+            return self.bonds[id1][id2][0]
+        except KeyError:
+            return 0
 
     def GetBondType(self, id1, id2):
-        try:
-            return (self.bonds[id1][id2])
-        except KeyError:
-            return (0)
+        bond_order = self.GetBondOrder(id1, id2)
+        if self.stereo and bond_order == 2 and self.bonds[id1][id2][1] != 0:
+            return self.bonds[id1][id2][0] * 10 + self.bonds[id1][id2][1]
+        else:
+            return bond_order
 
+    def SetDoubleBondConfig(self, id1, id2, bond_stereo):
+        if bond_stereo not in [0, 1, 2, 3]:
+            raise Exception('Wrong double bond stereo!')
+        self.bonds[id1][id2] = self.bonds[id2][id1] = (2, bond_stereo)
+
+    def _Path(self, start_atom, list_atom, cycles_local, visited, size_range):
+        for a in self.bonds[start_atom].keys():
+            if len(list_atom) <= max(size_range) and a not in list_atom and a not in visited:
+                self._Path(a, list_atom + [a], cycles_local, visited, size_range)
+            elif len(list_atom) in size_range and a == list_atom[0]:
+                if tuple(set(sorted(list_atom))) not in cycles_local:
+                    cycles_local.add(tuple(set(sorted(list_atom))))
+
+    def GetCycles(self, min_size, max_size):
+        cycles = set()
+        visited = set()  # atoms which already has been tested as a cycle member can be excluded from further cycles checks
+        for a in sorted(self.atoms.keys()):
+            visited.add(a)
+            if len(self.bonds[a].keys()) > 1:
+                self._Path(a, [a], cycles, visited, range(min_size, max_size + 1))
+        return cycles
+
+    def SetCyclicDoubleBondsCis(self, min_size=3, max_size=7):
+        cycles = self.GetCycles(min_size, max_size)
+        for cycle in cycles:
+            for a1, a2 in combinations(cycle, 2):
+                if self.GetBondOrder(a1, a2) == 2:
+                    self.bonds[a1][a2] = self.bonds[a2][a1] = (2, 1)
