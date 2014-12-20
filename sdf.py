@@ -12,7 +12,7 @@
 
 from mols import Mol3 as Mol
 from files import ReadPropertyRange, RangedLetter
-import pprint
+
 
 formal_charges_table = {'0': 0,
                         '1': 3,

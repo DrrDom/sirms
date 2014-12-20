@@ -29,7 +29,7 @@ class Mol3:
             self.bonds[id1] = dict()
         if id2 not in self.bonds.keys():
             self.bonds[id2] = dict()
-        # bond value is a tuple: 1 - bond order, 2 - double bond stereo type (0 - unspecified, 1 - cis, 2 -trans)
+        # bond value is a tuple: 1 - bond order, 2 - double bond stereo type (0 - unspecified, 1 - cis, 2 -trans, 3 - cyclic)
         self.bonds[id1][id2] = self.bonds[id2][id1] = (bond_type, 0)
 
     def GetBondOrder(self, id1, id2):
@@ -72,4 +72,4 @@ class Mol3:
         for cycle in cycles:
             for a1, a2 in combinations(cycle, 2):
                 if self.GetBondOrder(a1, a2) == 2:
-                    self.bonds[a1][a2] = self.bonds[a2][a1] = (2, 1)
+                    self.bonds[a1][a2] = self.bonds[a2][a1] = (2, 3)
