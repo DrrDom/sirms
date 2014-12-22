@@ -14,7 +14,7 @@
 #-------------------------------------------------------------------------------
 #!/usr/bin/env python
 
-import os, argparse
+import argparse
 import time
 import files
 from itertools import combinations, chain, product
@@ -60,7 +60,7 @@ def SaveSimplexes(fname, sirms, ndigits=5):
 
 def SetLabels(mols, opt_diff, input_fname):
     for s_diff in opt_diff:
-        if s_diff != "elm":
+        if s_diff not in ['elm', 'none']:
             files.LoadRangedProperty(mols, GetWorkDir(input_fname), GetFileNameNoExt(input_fname) + '.' + s_diff)
     return (None)
 
@@ -109,6 +109,8 @@ def CalcSingleCompSirms(mol, sirms_dict, diff_list, sirms_types, noH, verbose, f
         for s_diff in diff_list:
             if s_diff == 'elm':
                 labels = [mol.atoms[a_id]["label"] for a_id in a]
+            elif s_diff == 'none':
+                labels = ['A' for a_id in a]
             else:
                 labels = [mol.atoms[a_id]['property'][s_diff]['label'] for a_id in a]
             if nodict:
@@ -195,6 +197,11 @@ def CalcBinMixSirms(mol_list, id_list, sirms_dict, diff_list, sirms_types, noH, 
                     else:
                         labels = [mol_list[0].atoms[a11]["label"] for a11 in a1] + [mol_list[1].atoms[a22]["label"] for
                                                                                     a22 in a2]
+                elif s_diff == 'none':
+                    if mix_ordered:
+                        labels = [id_list[0] + 'A' for a11 in a1] + [id_list[1] + 'A' for a22 in a2]
+                    else:
+                        labels = ['A' for a11 in a1] + ['A' for a22 in a2]
                 else:
                     if mix_ordered:
                         labels = [id_list[0] + mol_list[0].atoms[a11]['property'][s_diff]['label'] for a11 in a1] + [
@@ -408,7 +415,8 @@ def main():
                              'any bond types, while the other approach (which uses dictionary) can handle structures '
                              'containing only 0-4 bond types')
     parser.add_argument('-d', '--diff', metavar='', default=['elm'], nargs='*',
-                        help='list of atom labeling schemes separated by space. Built-in scheme is element (elm). '
+                        help='list of atom labeling schemes separated by space. Built-in scheme is element (elm) and '
+                             'topology only (none). '
                              'To include other schemes user should specify corresponding keyword, which is an '
                              'extension of the file containing atomic characteristics of each compound. '
                              'Name of the file should be equal to the name of sdf input file. Default value = elm')
