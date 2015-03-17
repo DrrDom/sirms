@@ -5,7 +5,7 @@
 # Author:      Pavel Polishchuk
 #
 # Created:     06.06.2013
-# Copyright:   (c) Pavel Polishchuk 2013
+# Copyright:   (c) Pavel Polishchuk 2013-2015
 # Licence:     GPLv3
 #-------------------------------------------------------------------------------
 

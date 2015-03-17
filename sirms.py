@@ -8,7 +8,7 @@
 # Author:      Pavel Polishchuk
 #
 # Created:     01.01.2013
-# Copyright:   (c) Pavel Polishchuk 2013
+# Copyright:   (c) Pavel Polishchuk 2013-2015
 # Licence:     GPLv3
 # Python Version: 3.2
 #-------------------------------------------------------------------------------
@@ -18,6 +18,8 @@ import argparse
 import time
 import files
 from itertools import combinations, chain, product
+from collections import OrderedDict
+
 from sdf import ReadSDF
 from ppgfunctions import *
 from canon import LoadSirmsDict, GetCanonNameByDict, GenCanonName, GetSirmsType2, GetSirmsType
@@ -37,10 +39,10 @@ def SaveSimplexes(fname, sirms, ndigits=5):
     f_out = open(fname, 'wt')
     # get sorted unique simplex names
     sirms_names = sorted(list(set(list(chain.from_iterable([list(s.keys()) for s in sirms.values()])))))
-    compound_names = sorted([k for k in sirms.keys()])
+    # compound_names = sorted([k for k in sirms.keys()])
     f_out.write("Compounds\t" + "\t".join(sirms_names) + "\n")
     s = "{:." + str(ndigits) + "f}"
-    for n in compound_names:
+    for n in sirms.keys():
         line = []
         for m in sirms_names:
             value = sirms[n].get(m, 0)
@@ -324,7 +326,7 @@ def CalcSingleCompSirmsMP(mol_list, sirms_dict, opt_diff, opt_types, opt_noH, nc
     """
     if opt_verbose:
         print(' Single compounds calculation '.center(79, '-'))
-    d = {}
+    d = OrderedDict()
     if abs(ncores) > 1:
         p = Pool(processes=min(len(mol_list), abs(ncores)))
         res = [p.apply_async(CalcSingleCompSirms, [mol, sirms_dict, opt_diff, opt_types, opt_noH, opt_verbose, frags])

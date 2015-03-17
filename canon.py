@@ -146,7 +146,9 @@ def GetSirmsType(bonds):
 
 def GetSirmsType2(mol, atoms):
     b = []
+    # atoms = set(atoms)
     for a in atoms:
+        # b.append(len(set(mol.bonds[a].keys()).intersection(atoms)))
         tmp = 0
         for a1 in mol.bonds[a].keys():
             if a1 in atoms:
