@@ -109,12 +109,7 @@ def CalcSingleCompSirms(mol, sirms_dict, diff_list, sirms_types, noH, verbose, f
         # start simplex calculation
         bonds = [mol.GetBondType(b[0], b[1]) for b in combinations(a, 2)]
         for s_diff in diff_list:
-            if s_diff == 'elm':
-                labels = [mol.atoms[a_id]["label"] for a_id in a]
-            elif s_diff == 'none':
-                labels = ['A' for a_id in a]
-            else:
-                labels = [mol.atoms[a_id]['property'][s_diff]['label'] for a_id in a]
+            labels = [mol.atoms[a_id]['property'][s_diff]['label'] for a_id in a]
             if nodict:
                 canon_name = GenCanonName(labels, bonds, a)
             else:
@@ -192,25 +187,13 @@ def CalcBinMixSirms(mol_list, id_list, sirms_dict, diff_list, sirms_types, noH, 
             if GetSirmsType(bonds) not in sirms_types: continue
             for s_diff in diff_list:
                 # get labels
-                if s_diff == 'elm':
-                    if mix_ordered:
-                        labels = [id_list[0] + mol_list[0].atoms[a11]["label"] for a11 in a1] + [
-                            id_list[1] + mol_list[1].atoms[a22]["label"] for a22 in a2]
-                    else:
-                        labels = [mol_list[0].atoms[a11]["label"] for a11 in a1] + [mol_list[1].atoms[a22]["label"] for
-                                                                                    a22 in a2]
-                elif s_diff == 'none':
-                    if mix_ordered:
-                        labels = [id_list[0] + 'A' for a11 in a1] + [id_list[1] + 'A' for a22 in a2]
-                    else:
-                        labels = ['A' for a11 in a1] + ['A' for a22 in a2]
+                if mix_ordered:
+                    labels = [id_list[0] + mol_list[0].atoms[a11]['property'][s_diff]['label'] for a11 in a1] + [
+                        id_list[1] + mol_list[1].atoms[a22]['property'][s_diff]['label'] for a22 in a2]
                 else:
-                    if mix_ordered:
-                        labels = [id_list[0] + mol_list[0].atoms[a11]['property'][s_diff]['label'] for a11 in a1] + [
-                            id_list[1] + mol_list[1].atoms[a22]['property'][s_diff]['label'] for a22 in a2]
-                    else:
-                        labels = [mol_list[0].atoms[a11]['property'][s_diff]['label'] for a11 in a1] + [
-                            mol_list[1].atoms[a22]['property'][s_diff]['label'] for a22 in a2]
+                    labels = [mol_list[0].atoms[a11]['property'][s_diff]['label'] for a11 in a1] + [
+                        mol_list[1].atoms[a22]['property'][s_diff]['label'] for a22 in a2]
+
                 canon_name = GenCanonName(labels, bonds, [1, 2, 3, 4]) if nodict else GetCanonNameByDict(labels, bonds,
                                                                                                          sirms_dict)
                 sirms_name = 'M|A|' + s_diff + '|' + canon_name
@@ -419,9 +402,9 @@ def main():
     parser.add_argument('-d', '--diff', metavar='', default=['elm'], nargs='*',
                         help='list of atom labeling schemes separated by space. Built-in scheme is element (elm) and '
                              'topology only (none). '
-                             'To include other schemes user should specify corresponding keyword, which is an '
-                             'extension of the file containing atomic characteristics of each compound. '
-                             'Name of the file should be equal to the name of sdf input file. Default value = elm')
+                             'To include other schemes user should specify the name of the corresponding property value '
+                             'identical to the name of SDF field, which contains calculated atomic properties. '
+                             'Default value = elm')
     parser.add_argument('-t', '--types', metavar='', default='all',
                         choices=['all', 'bounded', 'extended'],
                         help='list of simplex types which should be calculated. There three possible values: all, '

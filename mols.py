@@ -11,6 +11,18 @@
 
 from itertools import combinations
 
+elements = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg',
+            'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe',
+            'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr', 'Y',
+            'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn', 'Sb', 'Te',
+            'I', 'Xe', 'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb',
+            'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu', 'Hf', 'Ta', 'W', 'Re', 'Os', 'Ir', 'Pt',
+            'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn', 'Fr', 'Ra', 'Ac', 'Th', 'Pa',
+            'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr', 'Rf',
+            'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds', 'Rg', 'Uub', 'Uut', 'Uuq', 'Uup', 'Uuh',
+            'Uus', 'Uuo']
+
+
 class Mol3:
     def __init__(self):
         self.atoms = {}
@@ -20,7 +32,8 @@ class Mol3:
 
     def AddAtom(self, id, label, x, y, z, formal_charge):
         self.atoms[id] = {'label': label, 'x': x, 'y': y, 'z': z,
-                          'property': {},
+                          'property': {'elm': {'label': label, 'value': label, 'weight': elements.index(label)},
+                                       'none': {'label': 'A', 'value': 'A', 'weight': 0}},
                           'formal_charge': formal_charge}
         self.bonds[id] = dict()
 
@@ -33,10 +46,7 @@ class Mol3:
         self.bonds[id1][id2] = self.bonds[id2][id1] = (bond_type, 0)
 
     def GetBondOrder(self, id1, id2):
-        try:
-            return self.bonds[id1][id2][0]
-        except KeyError:
-            return 0
+        return self.bonds.get(id1, dict()).get(id2, (0, 0))[0]
 
     def GetBondType(self, id1, id2):
         bond_order = self.GetBondOrder(id1, id2)
