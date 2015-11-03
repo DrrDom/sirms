@@ -20,10 +20,11 @@ import files
 from itertools import combinations, chain, product
 from collections import OrderedDict
 
-from sdf import ReadSDF
+from sdf import ReadSDF, ReadRDF, ReadRXN
 from ppgfunctions import *
 from canon import LoadSirmsDict, GetCanonNameByDict, GenCanonName, GetSirmsType2, GetSirmsType
 from multiprocessing import Pool, cpu_count
+
 
 #===============================================================================
 # Save simplexes
@@ -55,6 +56,41 @@ def SaveSimplexes(fname, sirms, ndigits=5):
                 line.append(str(value))
         f_out.write(n + "\t" + "\t".join(map(str, line)) + "\n")
     f_out.close()
+
+
+#===============================================================================
+# create reaction sirms
+def concat_reaction_sirms(sirms):
+
+    output = OrderedDict()
+
+    while sirms:
+
+        # take first element
+        k, v = sirms.popitem(last=False)
+        rx_id, role = k.rsplit('_', 1)
+        # first letter from role is used as additional description
+        new_sirms_names = [role[0] + '|' + s for s in sorted(v.keys())]
+        s1 = {new_sirms_names[i]: v[sname] for i, sname in enumerate(sorted(v.keys()))}
+
+        # take complimentary element (reactants or products of the same reaction)
+        if role == 'reactants':
+            k = rx_id + '_products'
+            new_sirms_names = ['p|' + s for s in sorted(sirms[k].keys())]
+        elif role == 'products':
+            k = rx_id + '_reactants'
+            new_sirms_names = ['r|' + s for s in sorted(sirms[k].keys())]
+        else:
+            print('Impossible error')
+        v = sirms[k]
+        s2 = {new_sirms_names[i]: v[sname] for i, sname in enumerate(sorted(sirms[k].keys()))}
+        del(sirms[k])
+
+        # combine them
+        s1.update(s2)
+        output[rx_id] = s1
+
+    return output
 
 
 #===============================================================================
@@ -216,6 +252,7 @@ def CalcMixSirms(mol_list, ratio_list, single_sirms, base_bin_mix_sirms, mix_ord
         dict of weighted descriptors for a mixture according to given ratio of components
     """
     d = {}
+
     # descriptors from separate components
     if mix_ordered:
         # rename descriptors (add component ids to labels) and calc weighted values
@@ -228,10 +265,15 @@ def CalcMixSirms(mol_list, ratio_list, single_sirms, base_bin_mix_sirms, mix_ord
     else:
         # combine descriptors of each pair of components and calc weighted values
         m_titles = [m.title for m in mol_list]
-        for i1, i2 in combinations(range(len(mol_list)), 2):
-            for s_name in set(list(single_sirms[m_titles[i1]].keys()) + list(single_sirms[m_titles[i2]].keys())):
-                d[s_name] = single_sirms[m_titles[i1]].get(s_name, 0) * ratio_list[i1] + single_sirms[m_titles[i2]].get(
-                    s_name, 0) * ratio_list[i2]
+        if len(mol_list) == 1:
+            for s_name, s_value in single_sirms[m_titles[0]].items():
+                d[s_name] = s_value * ratio_list[0]
+        else:
+            for i1, i2 in combinations(range(len(mol_list)), 2):
+                for s_name in set(list(single_sirms[m_titles[i1]].keys()) + list(single_sirms[m_titles[i2]].keys())):
+                    d[s_name] = single_sirms[m_titles[i1]].get(s_name, 0) * ratio_list[i1] + single_sirms[m_titles[i2]].get(
+                        s_name, 0) * ratio_list[i2]
+
     # descriptors from mixtures
     m_titles = [str(i + 1) + '#' + m.title for i, m in enumerate(mol_list)] if mix_ordered else [m.title for m in
                                                                                                  mol_list]
@@ -352,11 +394,12 @@ def GetUniqBinMixNames(mix, ordered):
 def GenQuasiMix(mol_names):
     return {n: {'names': [n, n], 'ratios': [0.5, 0.5]} for n in mol_names}
 
+
 #===============================================================================
 # Main cycle
 
 def main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname, opt_mix_ordered, opt_ncores,
-                opt_verbose, opt_noH, frag_fname, parse_stereo, quasimix):
+                opt_verbose, opt_noH, frag_fname, parse_stereo, quasimix, id_field_name):
 
     if opt_no_dict:
         sirms_dict = {}
@@ -366,22 +409,39 @@ def main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname
     # define which property will be loaded from external file or from sdf-file
     opt_diff_sdf = files.NotExistedPropertyFiles(opt_diff, in_fname)
     opt_diff_ext = [el for el in opt_diff if el not in opt_diff_sdf]
-    mols = ReadSDF(in_fname,
-                   opt_diff_sdf,
-                   os.path.join(GetWorkDir(in_fname), "setup.txt"),
-                   parse_stereo)
+
+    # load sdf, rdf or rxn file depending on its extension
+    input_file_extension = in_fname.strip().split(".")[-1].lower()
+    setup_path = os.path.join(GetWorkDir(in_fname), "setup.txt")
+    if input_file_extension == 'sdf':
+        mols = ReadSDF(in_fname, opt_diff_sdf, setup_path, parse_stereo)
+    elif input_file_extension == 'rdf':
+        mols, mix = ReadRDF(in_fname, id_field_name, opt_diff_sdf, setup_path)
+    elif input_file_extension == 'rxn':
+        mols, mix = ReadRXN(in_fname, id_field_name, opt_diff_sdf, setup_path, parse_stereo)
+    else:
+        print("Input file extension should be SDF, RDF or RXN. Current file has %s. Please check it." % extension.upper())
+        return None
+
+    # set property labels on atoms from external data files
     SetLabels(mols, opt_diff_ext, in_fname)
-    if mix_fname is None and not quasimix:
+
+    if mix_fname is None and not quasimix and input_file_extension == 'sdf':
+
         frags = files.LoadFragments(frag_fname)
         # calc simplex descriptors
         sirms = CalcSingleCompSirmsMP([m for m in mols.values()], sirms_dict, opt_diff, opt_types, opt_noH, opt_ncores,
                                       opt_verbose, frags)
         SaveSimplexes(out_fname, sirms)
+
     else:
-        if quasimix:
-            mix = GenQuasiMix(list(mols.keys()))
-        else:
-            mix = files.LoadMixturesTxt(mix_fname)
+
+        # create mix data for sdf (for rdf/rxn mix is created during file loading)
+        if input_file_extension == 'sdf':
+            if quasimix:
+                mix = GenQuasiMix(list(mols.keys()))
+            else:
+                mix = files.LoadMixturesTxt(mix_fname)
         mols_used = set(chain.from_iterable([m['names'] for m in mix.values()]))
         base_single_sirms = CalcSingleCompSirmsMP([m for m in mols.values() if m.title in mols_used], sirms_dict,
                                                   opt_diff, opt_types, opt_noH, opt_ncores, opt_verbose)
@@ -389,10 +449,14 @@ def main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname
         uniq_bin_mix = GetUniqBinMixNames(mix, opt_mix_ordered)
         base_bin_mix_sirms = GetBaseBinMixSirmsMP(uniq_bin_mix, mols, sirms_dict, opt_diff, opt_types, opt_noH,
                                                   opt_mix_ordered, opt_ncores, opt_verbose)
-        mix_sirms = {}
+        mix_sirms = OrderedDict()
         for m_name, m in mix.items():
             mix_sirms[m_name] = CalcMixSirms([mols[mol_name] for mol_name in m['names']], m['ratios'],
                                              base_single_sirms, base_bin_mix_sirms, opt_mix_ordered)
+
+        if input_file_extension in ['rdf', 'rxn']:
+            mix_sirms = concat_reaction_sirms(mix_sirms)
+
         SaveSimplexes(out_fname, mix_sirms)
 
 
@@ -419,7 +483,7 @@ def main():
                              'bounded=5,6,8-11, extended=3-11. Default value = extended')
     parser.add_argument('-s', '--stereo', action='store_true', default=False,
                         help='parse stereo information from the <stereoanalysis> field generated by Chemaxon. '
-                             'Works only for double bonds.')
+                             'Works only for double bonds in sdf and rxn files (not in rdf).')
     parser.add_argument('-m', '--mixtures', metavar='mixtures.txt', default=None,
                         help='text file containing list of mixtures of components and their ratios. Names of components'
                              ' should be the same as in input.sdf file. The header should contain the string '
@@ -442,6 +506,10 @@ def main():
     parser.add_argument('-f', '--fragments', metavar='fragments.txt', default=None,
                         help='text file containing list of names of single compounds, fragment names and atom '
                              'indexes of fragment in the structure of corresponding compound')
+    parser.add_argument('-a', '--id_field_name', metavar='FIELD_NAME', default=None,
+                        help='name of field name with unique ID for compounds (sdf) or reactions (rdf/rxn). '
+                             'If omitted for sdf mol tiles will be used or auto-generated names; '
+                             'for rdf $RIREG/$REREG field if it is not empty or auto-generated names')
 
     args = vars(parser.parse_args())
     opt_mix_ordered = None
@@ -462,12 +530,16 @@ def main():
         if o == "fragments": frag_fname = v
         if o == "stereo": parse_stereo = v
         if o == "quasi_mix": quasimix = v
+        if o == "id_field_name": id_field_name = v
     if quasimix:
+        opt_mix_ordered = False
+        mix_fname = None
+    if in_fname.split('.')[-1] in ['rdf', 'rxn']:
         opt_mix_ordered = False
         mix_fname = None
 
     main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname, opt_mix_ordered, opt_ncores,
-                opt_verbose, opt_noH, frag_fname, parse_stereo, quasimix)
+                opt_verbose, opt_noH, frag_fname, parse_stereo, quasimix, id_field_name)
 
 
 if __name__ == '__main__':

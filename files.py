@@ -12,6 +12,7 @@
 import os
 from string import ascii_uppercase
 from ppgfunctions import GetFileNameNoExt, GetWorkDir
+from collections import OrderedDict
 
 
 def NotExistedPropertyFiles(opt_diff, input_fname):
@@ -21,7 +22,7 @@ def NotExistedPropertyFiles(opt_diff, input_fname):
     """
     output = []
     for s_diff in opt_diff:
-        if s_diff != "elm":
+        if s_diff not in ["elm", "none"]:   # built-in types are ignored
             if not os.path.isfile(os.path.join(GetWorkDir(input_fname),
                                                GetFileNameNoExt(input_fname) + '.' + s_diff)):
                 output.append(s_diff)
@@ -120,7 +121,7 @@ def LoadMixturesTxt(fname):
       'K-Arg-Ser_(1.0)+MS-7_(1.0)': {'names': ['K-Arg-Ser', 'MS-7'], 'ratios': [1.0, 1.0]},
       'K-Ala-Glu_(1.0)+E-21_(1.0)': {'names': ['K-Ala-Glu', 'E-21'], 'ratios': [1.0, 1.0]} }
     """
-    d = {}
+    d = OrderedDict()
     f = open(fname, 'rt')
     header = f.readline()
     if header.strip() == '!absolute ratio':
@@ -140,6 +141,7 @@ def LoadMixturesTxt(fname):
         mol_ratios = list(map(float, tmp[(len(tmp) // 2):]))
         if not abs_ratio:
             mol_ratios = [v / sum(mol_ratios) for v in mol_ratios]
+        mol_ratios = [round(v, 4) for v in mol_ratios]
         mix_name = '+'.join([mol_names[i] + '_(' + str(mol_ratios[i]) + ')' for i in range(mix_num)])
         d[mix_name] = {'names': mol_names, 'ratios': mol_ratios}
     return (d)
