@@ -68,6 +68,34 @@ def add_property_to_atoms(mol, data_dict, fsetup):
                                                    'label': label}
 
 
+def get_sdf_property(sdf_lines, property_name):
+
+    i = 0
+
+    field_strings = ['>  <' + property_name + '>', '> <' + property_name + '>']
+
+    # find field
+    for i, line in enumerate(sdf_lines):
+        if line.lower() in field_strings:
+            break
+
+    if i == len(sdf_lines):
+        print('Field %s was not found in the input file.' % property_name)
+        return None
+
+    # retrieve data if field was found
+    i += 1
+    data = []
+    while i < len(sdf_lines):
+        if sdf_lines[i].find('>  <') == 0 or sdf_lines[i].find('> <') == 0:
+            break
+        if sdf_lines[i]:
+            data.append(sdf_lines[i])
+        i += 1
+
+    return data
+
+
 def ReadSDF(fname, opt_diff, fsetup, parse_stereo):
     """
     INPUT: sdf-filename
@@ -85,24 +113,18 @@ def ReadSDF(fname, opt_diff, fsetup, parse_stereo):
         start_line_property_block = 4 + len(mol.atoms) + len(mol.bonds)
 
         # read properties from sdf fields
-        if opt_diff:
-            # prepare data field; missing values in data string is replaced by 9999
-            opt_diff = [el.lower() for el in opt_diff]
-            data_dict = dict()
-            i = start_line_property_block
-            while i < len(molstr) - 1:
-                if molstr[i][:3] == '> <' or molstr[i][:4] == '>  <':
-                    line = molstr[i].strip()[4:-1].lower()
-                    if line in opt_diff:
-                        i += 1
-                        s = molstr[i].strip().split(";")
-                        try:
-                            data_dict[line] = [float(el.replace(",", ".")) if el != "" else None for el in s]
-                        except ValueError:
-                            data_dict[line] = [el if el != "" else None for el in s]
-                i += 1
-            # add labels
-            add_property_to_atoms(mol, data_dict, fsetup)
+        data_dict = dict()
+        for diff in opt_diff:
+            data = get_sdf_property(molstr, diff)
+            if data is not None and len(data) == 1:
+                s = data[0].split(';')
+                try:
+                    data_dict[diff] = [float(el.replace(",", ".")) if el != "" else None for el in s]
+                except ValueError:
+                    data_dict[diff] = [el if el != "" else None for el in s]
+
+        # add labels
+        add_property_to_atoms(mol, data_dict, fsetup)
 
         # parse stereo
         if parse_stereo:
@@ -141,7 +163,7 @@ def ReadSDF(fname, opt_diff, fsetup, parse_stereo):
     molstr = []
     with open(fname) as f:
         for line in f:
-            if line.find("$$$$") < 0:
+            if line.rstrip() != "$$$$":
                 molstr.append(line.rstrip())
             else:
                 m = _MolstrToMol(molstr, opt_diff, parse_stereo, len(mols) + 1)

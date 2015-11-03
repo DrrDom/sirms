@@ -474,8 +474,9 @@ def main():
     parser.add_argument('-d', '--diff', metavar='', default=['elm'], nargs='*',
                         help='list of atom labeling schemes separated by space. Built-in scheme is element (elm) and '
                              'topology only (none). '
-                             'To include other schemes user should specify the name of the corresponding property value '
-                             'identical to the name of SDF field, which contains calculated atomic properties. '
+                             'To include other schemes user should specify the name of the corresponding property '
+                             'value identical to the name of SDF field, which contains calculated atomic properties. '
+                             'Fields names are case-insensitive and converted to lowercase. '
                              'Default value = elm')
     parser.add_argument('-t', '--types', metavar='', default='extended',
                         choices=['all', 'bounded', 'extended'],
@@ -537,6 +538,7 @@ def main():
     if in_fname.split('.')[-1] in ['rdf', 'rxn']:
         opt_mix_ordered = False
         mix_fname = None
+    opt_diff = [s.lower() for s in opt_diff]
 
     main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname, opt_mix_ordered, opt_ncores,
                 opt_verbose, opt_noH, frag_fname, parse_stereo, quasimix, id_field_name)
