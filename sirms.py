@@ -416,11 +416,11 @@ def main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname
     if input_file_extension == 'sdf':
         mols = ReadSDF(in_fname, opt_diff_sdf, setup_path, parse_stereo)
     elif input_file_extension == 'rdf':
-        mols, mix = ReadRDF(in_fname, id_field_name, opt_diff_sdf, setup_path)
+        mols, mix = ReadRDF(in_fname, id_field_name)
     elif input_file_extension == 'rxn':
-        mols, mix = ReadRXN(in_fname, id_field_name, opt_diff_sdf, setup_path, parse_stereo)
+        mols, mix = ReadRXN(in_fname, id_field_name)
     else:
-        print("Input file extension should be SDF, RDF or RXN. Current file has %s. Please check it." % extension.upper())
+        print("Input file extension should be SDF, RDF or RXN. Current file has %s. Please check it." % input_file_extension.upper())
         return None
 
     # set property labels on atoms from external data files
@@ -476,7 +476,8 @@ def main():
                              'topology only (none). '
                              'To include other schemes user should specify the name of the corresponding property '
                              'value identical to the name of SDF field, which contains calculated atomic properties. '
-                             'Fields names are case-insensitive and converted to lowercase. '
+                             'Fields names are case-insensitive and converted to lowercase. For RDF/RXN input files '
+                             'only built-in types can be used. '
                              'Default value = elm')
     parser.add_argument('-t', '--types', metavar='', default='extended',
                         choices=['all', 'bounded', 'extended'],
@@ -509,7 +510,7 @@ def main():
                              'indexes of fragment in the structure of corresponding compound')
     parser.add_argument('-a', '--id_field_name', metavar='FIELD_NAME', default=None,
                         help='name of field name with unique ID for compounds (sdf) or reactions (rdf/rxn). '
-                             'If omitted for sdf mol tiles will be used or auto-generated names; '
+                             'If omitted for sdf molecule titles will be used or auto-generated names; '
                              'for rdf $RIREG/$REREG field if it is not empty or auto-generated names')
 
     args = vars(parser.parse_args())
