@@ -9,17 +9,21 @@ Simplex - tetraatomic fragment with fixed topology and stereo configuration. Sim
 Features
 -----
 1. Calculates descriptors for single compounds, mixtures, quasi-mixtures and reactions (all-in-one tool).
-2. Supports incorporation of user-defined atomic properties (e.g. partial charges, H-bond donor/acceptor, etc) in descriptors representation.
+2. Supports incorporation of user-defined atomic properties (e.g. partial charges, H-bond donor/acceptor, etc) in generated descriptors.
 3. Supports multi-threading to speed up calculations of large molecules and mixtures.
 4. Works extremely well in QSAR/QSPR modeling tasks.
 
 Limitations
 -----
-Calculates only 2D descriptors, but can additionally handle information about configuration of double bonds.
+This version calculates only 2D descriptors, but can additionally handle information about configuration of double bonds.
 
 Installation
 -----
-No installation is needed.
+No installation is needed. Unzip and launch sirms.py from the command line.
+
+Python version
+-----
+Only Python 3 is supported.
 
 Usage
 -----
