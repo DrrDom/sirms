@@ -70,6 +70,8 @@ def add_property_to_atoms(mol, data_dict, fsetup):
 
 def get_sdf_field(sdf_lines, property_name):
 
+    # case-insensitive field name search
+
     i = 0
 
     field_strings = ['>  <' + property_name + '>', '> <' + property_name + '>']
@@ -96,7 +98,7 @@ def get_sdf_field(sdf_lines, property_name):
     return data
 
 
-def ReadSDF(fname, opt_diff, fsetup, parse_stereo):
+def ReadSDF(fname, id_field_name, opt_diff, fsetup, parse_stereo):
     """
     INPUT: sdf-filename
     OUTPUT: dict of molecules, where key is the title of the moleculae taken from the first line of mol-record
@@ -106,11 +108,13 @@ def ReadSDF(fname, opt_diff, fsetup, parse_stereo):
 
         mol = molstr_to_Mol(molstr)
 
+        # get mol name from sdf field (multi-line data fields are concatenated via dot)
         if not mol.title:
-            mol.title = 'auto_generated_id_' + str(num_mol)
+            if id_field_name is not None:
+                mol.title = '.'.join(get_sdf_field(molstr, id_field_name))
+            else:
+                mol.title = 'auto_generated_id_' + str(num_mol)
         mol.stereo = parse_stereo
-
-        start_line_property_block = 4 + len(mol.atoms) + len(mol.bonds)
 
         # read properties from sdf fields
         data_dict = dict()
@@ -129,31 +133,22 @@ def ReadSDF(fname, opt_diff, fsetup, parse_stereo):
         # parse stereo
         if parse_stereo:
 
-            i = start_line_property_block
-
-            while i < len(molstr) - 1:
-                if molstr[i][:3] == '> <' or molstr[i][:4] == '>  <':
-                    line = molstr[i].strip()[4:-1].lower()
-                    # read stereo analysis data
-                    if line == 'stereoanalysis':
-                        i += 1
-                        while molstr[i].strip() and molstr[i][0] != '>':
-                            tmp = molstr[i].strip().split(' ')
-                            if tmp[0] == 'CISTRANS':
-                                # atoms enumeration in Chemaxon output starts from 0
-                                id1 = int(tmp[1][1:-1]) + 1
-                                id2 = int(tmp[2][:-1]) + 1
-                                bond_stereo = tmp[-1].lower()
-                                if bond_stereo == 'wiggly':
-                                    bond_stereo = 0
-                                elif bond_stereo == 'e':
-                                    bond_stereo = 2
-                                elif bond_stereo == 'z':
-                                    bond_stereo = 1
-                                mol.SetDoubleBondConfig(id1, id2, bond_stereo)
-                            i += 1
-                        break
-                i += 1
+            data = get_sdf_field(molstr, 'stereoanalysis')
+            if data is not None:
+                for line in data:
+                    tmp = line.split(' ')
+                    if tmp[0] == 'CISTRANS':
+                        # atoms enumeration in Chemaxon output starts from 0
+                        id1 = int(tmp[1][1:-1]) + 1
+                        id2 = int(tmp[2][:-1]) + 1
+                        bond_stereo = tmp[-1].lower()
+                        if bond_stereo == 'wiggly':
+                            bond_stereo = 0
+                        elif bond_stereo == 'e':
+                            bond_stereo = 2
+                        elif bond_stereo == 'z':
+                            bond_stereo = 1
+                        mol.SetDoubleBondConfig(id1, id2, bond_stereo)
 
             mol.SetCyclicDoubleBondsCis()
 

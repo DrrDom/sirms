@@ -24,6 +24,12 @@ elements = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg',
 
 
 class Mol3:
+    # double bonds can be:
+    # 2 - non-steric or undefined double bond (2, 0)
+    # 21 - Z double bond (2, 1)
+    # 22 - E double bond (2, 2)
+    # 23 - cyclic double bond in rings of size up to 7 (such bonds are always cis) (2, 3)
+
     def __init__(self):
         self.atoms = {}
         self.bonds = dict()
