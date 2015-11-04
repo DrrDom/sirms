@@ -510,8 +510,8 @@ def main():
     parser.add_argument('-f', '--fragments', metavar='fragments.txt', default=None,
                         help='text file containing list of names of single compounds, fragment names and atom '
                              'indexes of fragment in the structure of corresponding compound')
-    parser.add_argument('-a', '--id_field_name', metavar='field_name', default=None,
-                        help='name of field name with unique ID for compounds (sdf) or reactions (rdf/rxn). '
+    parser.add_argument('-w', '--id_field_name', metavar='field_name', default=None,
+                        help='field name of unique ID for compounds (sdf) or reactions (rdf/rxn). '
                              'If omitted for sdf molecule titles will be used or auto-generated names; '
                              'for rdf $RIREG/$REREG field if it is not empty or auto-generated names')
 
