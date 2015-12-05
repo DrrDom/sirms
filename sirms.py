@@ -45,6 +45,8 @@ def SaveSimplexes(fname, sirms, output_format, ndigits=5):
     ...
 
     or in svm sparse format with two additional files with extensions colnames and rownames
+    zero based indices
+    0:12 1:23 4:1 ...
     """
 
     if output_format == 'txt':
@@ -71,7 +73,7 @@ def SaveSimplexes(fname, sirms, output_format, ndigits=5):
         sirms_names = sorted(list(set(list(chain.from_iterable([list(s.keys()) for s in sirms.values()])))))
         open(os.path.splitext(fname)[0] + '.colnames', 'wt').write('\n'.join(sirms_names))
         open(os.path.splitext(fname)[0] + '.rownames', 'wt').write('\n'.join(sirms.keys()))
-        sirms_names = dict(zip(sirms_names, range(1, len(sirms_names) + 1)))
+        sirms_names = dict(zip(sirms_names, range(len(sirms_names))))
         s = "{:." + str(ndigits) + "f}"
         with open(fname, 'wt') as f:
             for name in sirms.keys():
