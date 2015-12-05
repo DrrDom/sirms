@@ -28,36 +28,66 @@ from multiprocessing import Pool, cpu_count
 
 mol_frag_sep = "###"
 
+
 #===============================================================================
 # Save simplexes
 
-def SaveSimplexes(fname, sirms, ndigits=5):
+def sort_lists_by(*lists, key_list=0, desc=False):
+    return zip(*sorted(zip(*lists), reverse=desc, key=lambda x: x[key_list]))
+
+
+def SaveSimplexes(fname, sirms, output_format, ndigits=5):
     """
     Save calculated decriptors in the tab-delimited text file format
     Descriptors   descriptor_1  descriptor_2  ...  descriptor_n
     compound_1               5             2                  0
     compound_2               1             1                  4
     ...
+
+    or in svm sparse format with two additional files with extensions colnames and rownames
     """
-    f_out = open(fname, 'wt')
-    # get sorted unique simplex names
-    sirms_names = sorted(list(set(list(chain.from_iterable([list(s.keys()) for s in sirms.values()])))))
-    # compound_names = sorted([k for k in sirms.keys()])
-    f_out.write("Compounds\t" + "\t".join(sirms_names) + "\n")
-    s = "{:." + str(ndigits) + "f}"
-    for n in sirms.keys():
-        line = []
-        for m in sirms_names:
-            value = sirms[n].get(m, 0)
-            # round floating point values, all others will be remained unchanged
-            if type(value) is int or value.is_integer():
-                line.append(str(int(value)))
-            elif isinstance(value, float):
-                line.append(s.format(value))
-            else:
-                line.append(str(value))
-        f_out.write(n + "\t" + "\t".join(map(str, line)) + "\n")
-    f_out.close()
+
+    if output_format == 'txt':
+        f_out = open(fname, 'wt')
+        # get sorted unique simplex names
+        sirms_names = sorted(list(set(list(chain.from_iterable([list(s.keys()) for s in sirms.values()])))))
+        # compound_names = sorted([k for k in sirms.keys()])
+        f_out.write("Compounds\t" + "\t".join(sirms_names) + "\n")
+        s = "{:." + str(ndigits) + "f}"
+        for n in sirms.keys():
+            line = []
+            for m in sirms_names:
+                value = sirms[n].get(m, 0)
+                # round floating point values, all others will be remained unchanged
+                if type(value) is int or value.is_integer():
+                    line.append(str(int(value)))
+                elif isinstance(value, float):
+                    line.append(s.format(value))
+                else:
+                    line.append(str(value))
+            f_out.write(n + "\t" + "\t".join(map(str, line)) + "\n")
+        f_out.close()
+    elif output_format == 'svm':
+        sirms_names = sorted(list(set(list(chain.from_iterable([list(s.keys()) for s in sirms.values()])))))
+        open(os.path.splitext(fname)[0] + '.colnames', 'wt').write('\n'.join(sirms_names))
+        open(os.path.splitext(fname)[0] + '.rownames', 'wt').write('\n'.join(sirms.keys()))
+        sirms_names = dict(zip(sirms_names, range(1, len(sirms_names) + 1)))
+        s = "{:." + str(ndigits) + "f}"
+        with open(fname, 'wt') as f:
+            for name in sirms.keys():
+                # get new integer names of simplexes
+                int_names = [sirms_names[v] for v in sirms[name].keys()]
+                values = []
+                for value in sirms[name].values():
+                    # round floating point values, all others will be remained unchanged
+                    if type(value) is int or value.is_integer():
+                        values.append(str(int(value)))
+                    elif isinstance(value, float):
+                        values.append(s.format(value))
+                    else:
+                        values.append(str(value))
+                int_names, values = sort_lists_by(int_names, values)
+                f.write(' '.join([str(n) + ':' + v for n, v in zip(int_names, values)]) + '\n')
 
 
 #===============================================================================
@@ -401,7 +431,7 @@ def GenQuasiMix(mol_names):
 # Main cycle
 
 def main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname, opt_mix_ordered, opt_ncores,
-                opt_verbose, opt_noH, frag_fname, parse_stereo, quasimix, id_field_name):
+                opt_verbose, opt_noH, frag_fname, parse_stereo, quasimix, id_field_name, output_format):
 
     if opt_no_dict:
         sirms_dict = {}
@@ -434,7 +464,7 @@ def main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname
         # calc simplex descriptors
         sirms = CalcSingleCompSirmsMP([m for m in mols.values()], sirms_dict, opt_diff, opt_types, opt_noH, opt_ncores,
                                       opt_verbose, frags)
-        SaveSimplexes(out_fname, sirms)
+        SaveSimplexes(out_fname, sirms, output_format)
 
     else:
 
@@ -459,7 +489,7 @@ def main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname
         if input_file_extension in ['rdf', 'rxn']:
             mix_sirms = concat_reaction_sirms(mix_sirms)
 
-        SaveSimplexes(out_fname, mix_sirms)
+        SaveSimplexes(out_fname, mix_sirms, output_format)
 
 
 def main():
@@ -468,9 +498,13 @@ def main():
                                                  'mixtures and reactions.')
     parser.add_argument('-i', '--in', metavar='input.sdf', required=True,
                         help='input file (allowed formats: sdf, rdf, rxn) with standardized structures, '
-                             'molecules or reactions should have titles')
+                             'molecules or reactions should have titles.')
     parser.add_argument('-o', '--out', metavar='output.txt', required=True,
-                        help='output txt file with calculated descriptors')
+                        help='output file with calculated descriptors. Can be in text or sparse svm format.')
+    parser.add_argument('-b', '--output_format', metavar='format_name',  default='txt',
+                        help='format of output file with calculated descriptors (txt|svm). '
+                             'Txt - ordinary tab-separated text file. Svm - sparse format, two additional file will '
+                             'be save with extensions colnames amd rownames.')
     parser.add_argument('-n', '--nodict', action='store_true', default=False,
                         help='if set this flag the simplexes will be generated slower but this procedure can handle '
                              'any bond types, while the other approach (which uses dictionary) can handle structures '
@@ -537,16 +571,20 @@ def main():
         if o == "stereo": parse_stereo = v
         if o == "quasi_mix": quasimix = v
         if o == "id_field_name": id_field_name = v
+        if o == "output_format": output_format = v
     if quasimix:
         opt_mix_ordered = False
         mix_fname = None
     if in_fname.split('.')[-1] in ['rdf', 'rxn']:
         opt_mix_ordered = False
         mix_fname = None
+    if output_format not in ['svm', 'txt']:
+        print("Wrong output format specified - %s. On;y txt or svm are allowed." % output_format)
+        exit()
     opt_diff = [s.lower() for s in opt_diff]
 
     main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname, opt_mix_ordered, opt_ncores,
-                opt_verbose, opt_noH, frag_fname, parse_stereo, quasimix, id_field_name)
+                opt_verbose, opt_noH, frag_fname, parse_stereo, quasimix, id_field_name, output_format)
 
 
 if __name__ == '__main__':
