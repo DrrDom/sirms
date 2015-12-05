@@ -26,6 +26,8 @@ from canon import LoadSirmsDict, GetCanonNameByDict, GenCanonName, GetSirmsType2
 from multiprocessing import Pool, cpu_count
 
 
+mol_frag_sep = "###"
+
 #===============================================================================
 # Save simplexes
 
@@ -164,7 +166,7 @@ def CalcSingleCompSirms(mol, sirms_dict, diff_list, sirms_types, noH, verbose, f
         if n == mol.title:
             output[mol.title] = d[n]
         else:
-            output[mol.title + "#" + n] = d[n]
+            output[mol.title + mol_frag_sep + n] = d[n]
     del (d)
 
     if verbose:
