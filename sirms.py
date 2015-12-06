@@ -71,12 +71,16 @@ def SaveSimplexes(fname, sirms, output_format, ndigits=5):
         f_out.close()
     elif output_format == 'svm':
         sirms_names = sorted(list(set(list(chain.from_iterable([list(s.keys()) for s in sirms.values()])))))
-        open(os.path.splitext(fname)[0] + '.colnames', 'wt').write('\n'.join(sirms_names))
-        open(os.path.splitext(fname)[0] + '.rownames', 'wt').write('\n'.join(sirms.keys()))
+        colnames = sirms_names
+        rownames = sirms.keys()
         sirms_names = dict(zip(sirms_names, range(len(sirms_names))))
         s = "{:." + str(ndigits) + "f}"
+        missing_rows = []   # contains mols with all zero descriptors to omit in output
         with open(fname, 'wt') as f:
-            for name in sirms.keys():
+            for i, name in enumerate(sirms.keys()):
+                if len(sirms[name]) == 0:
+                    missing_rows.append(i)
+                    continue
                 # get new integer names of simplexes
                 int_names = [sirms_names[v] for v in sirms[name].keys()]
                 values = []
@@ -90,6 +94,8 @@ def SaveSimplexes(fname, sirms, output_format, ndigits=5):
                         values.append(str(value))
                 int_names, values = sort_lists_by(int_names, values)
                 f.write(' '.join([str(n) + ':' + v for n, v in zip(int_names, values)]) + '\n')
+        open(os.path.splitext(fname)[0] + '.colnames', 'wt').write('\n'.join(colnames))
+        open(os.path.splitext(fname)[0] + '.rownames', 'wt').write('\n'.join([row for i, row in enumerate(rownames) if i not in missing_rows]))
 
 
 #===============================================================================
