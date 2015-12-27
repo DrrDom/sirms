@@ -70,7 +70,7 @@ def add_property_to_atoms(mol, data_dict, fsetup):
 
 def get_sdf_field(sdf_lines, property_name):
 
-    # case-insensitive field name search
+    # case-sensitive field name search
 
     i = 0
 
@@ -78,10 +78,10 @@ def get_sdf_field(sdf_lines, property_name):
 
     # find field
     for i, line in enumerate(sdf_lines):
-        if line.lower() in field_strings:
+        if line in field_strings:
             break
 
-    if i == len(sdf_lines):
+    if i == len(sdf_lines) - 1:
         print('Field %s was not found in the input file.' % property_name)
         return None
 
@@ -104,16 +104,15 @@ def ReadSDF(fname, id_field_name, opt_diff, fsetup, parse_stereo):
     OUTPUT: dict of molecules, where key is the title of the moleculae taken from the first line of mol-record
     """
 
-    def _MolstrToMol(molstr, opt_diff, parse_stereo, num_mol):
+    def _MolstrToMol(molstr, id_field_name, opt_diff, parse_stereo, num_mol):
 
         mol = molstr_to_Mol(molstr)
 
         # get mol name from sdf field (multi-line data fields are concatenated via dot)
+        if id_field_name is not None:
+            mol.title = '.'.join(get_sdf_field(molstr, id_field_name))
         if not mol.title:
-            if id_field_name is not None:
-                mol.title = '.'.join(get_sdf_field(molstr, id_field_name))
-            else:
-                mol.title = 'auto_generated_id_' + str(num_mol)
+            mol.title = 'auto_generated_id_' + str(num_mol)
         mol.stereo = parse_stereo
 
         # read properties from sdf fields
@@ -133,7 +132,7 @@ def ReadSDF(fname, id_field_name, opt_diff, fsetup, parse_stereo):
         # parse stereo
         if parse_stereo:
 
-            data = get_sdf_field(molstr, 'stereoanalysis')
+            data = get_sdf_field(molstr, 'stereoanalysis'.upper())
             if data is not None:
                 for line in data:
                     tmp = line.split(' ')
@@ -161,7 +160,7 @@ def ReadSDF(fname, id_field_name, opt_diff, fsetup, parse_stereo):
             if line.rstrip() != "$$$$":
                 molstr.append(line.rstrip())
             else:
-                m = _MolstrToMol(molstr, opt_diff, parse_stereo, len(mols) + 1)
+                m = _MolstrToMol(molstr, id_field_name, opt_diff, parse_stereo, len(mols) + 1)
                 mols[m.title] = m
                 molstr = []
     return mols
