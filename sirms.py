@@ -143,6 +143,15 @@ def SetLabels(mols, opt_diff, input_fname):
     return (None)
 
 
+def SetBuiltinLabels(mols, opt_diff):
+    for mol in mols.values():
+        for atom in mol.atoms.values():
+            if 'elm' in opt_diff:
+                atom['property']['elm'] = {'label': [atom['label']], 'value': atom['label']}
+            if 'none' in opt_diff:
+                atom['property']['none'] = {'label': ['A'], 'value': 'A'}
+
+
 def CalcSingleCompSirms(mol, sirms_dict, diff_list, sirms_types, noH, verbose, frags=None):
     """
     INPUT:
@@ -186,17 +195,19 @@ def CalcSingleCompSirms(mol, sirms_dict, diff_list, sirms_types, noH, verbose, f
         bonds = [mol.GetBondType(b[0], b[1]) for b in combinations(a, 2)]
         for s_diff in diff_list:
             labels = [mol.atoms[a_id]['property'][s_diff]['label'] for a_id in a]
-            if nodict:
-                canon_name = GenCanonName(labels, bonds, a)
-            else:
-                canon_name = GetCanonNameByDict(labels, bonds, sirms_dict)
-            sirms_name = 'S|A|' + s_diff + '|' + canon_name
-            d[mol.title][sirms_name] = d[mol.title].get(sirms_name, 0) + 1
-            if local_frags is not None:
-                for frag in local_frags.keys():
-                    # if there is no common atoms in simplex and fragment
-                    if set(a).isdisjoint(local_frags[frag]):
-                        d[frag][sirms_name] = d[frag].get(sirms_name, 0) + 1
+            # iterate through all possible combinations of labels
+            for labels_set in product(*labels):
+                if nodict:
+                    canon_name = GenCanonName(labels_set, bonds, a)
+                else:
+                    canon_name = GetCanonNameByDict(labels_set, bonds, sirms_dict)
+                sirms_name = 'S|A|' + s_diff + '|' + canon_name
+                d[mol.title][sirms_name] = d[mol.title].get(sirms_name, 0) + 1
+                if local_frags is not None:
+                    for frag in local_frags.keys():
+                        # if there is no common atoms in simplex and fragment
+                        if set(a).isdisjoint(local_frags[frag]):
+                            d[frag][sirms_name] = d[frag].get(sirms_name, 0) + 1
 
     # rename frags in output dict
     output = {}
@@ -264,16 +275,21 @@ def CalcBinMixSirms(mol_list, id_list, sirms_dict, diff_list, sirms_types, noH, 
             for s_diff in diff_list:
                 # get labels
                 if mix_ordered:
-                    labels = [id_list[0] + mol_list[0].atoms[a11]['property'][s_diff]['label'] for a11 in a1] + [
-                        id_list[1] + mol_list[1].atoms[a22]['property'][s_diff]['label'] for a22 in a2]
+                    labels = []
+                    for aid in a1:
+                        labels.append([id_list[0] + v for v in mol_list[0].atoms[aid]['property'][s_diff]['label']])
+                    for aid in a2:
+                        labels.append([id_list[1] + v for v in mol_list[1].atoms[aid]['property'][s_diff]['label']])
                 else:
                     labels = [mol_list[0].atoms[a11]['property'][s_diff]['label'] for a11 in a1] + [
                         mol_list[1].atoms[a22]['property'][s_diff]['label'] for a22 in a2]
 
-                canon_name = GenCanonName(labels, bonds, [1, 2, 3, 4]) if nodict else GetCanonNameByDict(labels, bonds,
-                                                                                                         sirms_dict)
-                sirms_name = 'M|A|' + s_diff + '|' + canon_name
-                d[sirms_name] = d.get(sirms_name, 0) + 1
+                # iterate through all combinations of labels
+                for labels_set in product(*labels):
+                    canon_name = GenCanonName(labels_set, bonds, [1, 2, 3, 4]) if nodict else GetCanonNameByDict(labels_set, bonds, sirms_dict)
+                    sirms_name = 'M|A|' + s_diff + '|' + canon_name
+                    d[sirms_name] = d.get(sirms_name, 0) + 1
+
     if verbose:
         print(mol_list[0].title, mol_list[1].title, (str(round(time.time() - cur_time, 1)) + ' s').rjust(
             77 - len(mol_list[0].title) - len(mol_list[1].title)))
@@ -447,8 +463,9 @@ def main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname
         sirms_dict = LoadSirmsDict()
 
     # define which property will be loaded from external file or from sdf-file
-    opt_diff_sdf = files.NotExistedPropertyFiles(opt_diff, in_fname)
-    opt_diff_ext = [el for el in opt_diff if el not in opt_diff_sdf]
+    opt_diff_builtin = [v for v in opt_diff if v in ['elm', 'none']]
+    opt_diff_sdf = files.NotExistedPropertyFiles([v for v in opt_diff if v not in opt_diff_builtin], in_fname)
+    opt_diff_ext = [el for el in opt_diff if el not in opt_diff_sdf and el not in opt_diff_builtin]
 
     # load sdf, rdf or rxn file depending on its extension
     input_file_extension = in_fname.strip().split(".")[-1].lower()
@@ -465,6 +482,8 @@ def main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname
 
     # set property labels on atoms from external data files
     SetLabels(mols, opt_diff_ext, in_fname)
+    # set lebels of built-in types
+    SetBuiltinLabels(mols, opt_diff_builtin)
 
     if mix_fname is None and not quasimix and input_file_extension == 'sdf':
 
@@ -512,7 +531,7 @@ def main():
     parser.add_argument('-b', '--output_format', metavar='format_name',  default='txt',
                         help='format of output file with calculated descriptors (txt|svm). '
                              'Txt - ordinary tab-separated text file. Svm - sparse format, two additional file will '
-                             'be save with extensions colnames amd rownames.')
+                             'be save with extensions colnames amd rownames. Default: txt.')
     parser.add_argument('-n', '--nodict', action='store_true', default=False,
                         help='if set this flag the simplexes will be generated slower but this procedure can handle '
                              'any bond types, while the other approach (which uses dictionary) can handle structures '
@@ -522,8 +541,7 @@ def main():
                              'topology (none). '
                              'To include other schemes user should specify the name of the corresponding property '
                              'value identical to the name of SDF field, which contains calculated atomic properties. '
-                             'Fields names are case-insensitive and converted to lowercase. For RDF/RXN input files '
-                             'only built-in types can be used. '
+                             'Fields names are case-sensitive. For RDF/RXN input files only built-in types can be used. '
                              'Default value = elm')
     parser.add_argument('-t', '--types', metavar='', default='extended',
                         choices=['all', 'bounded', 'extended'],
@@ -589,7 +607,7 @@ def main():
     if output_format not in ['svm', 'txt']:
         print("Wrong output format specified - %s. On;y txt or svm are allowed." % output_format)
         exit()
-    opt_diff = [s.lower() for s in opt_diff]
+    # opt_diff = [s.lower() for s in opt_diff]
 
     main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname, opt_mix_ordered, opt_ncores,
                 opt_verbose, opt_noH, frag_fname, parse_stereo, quasimix, id_field_name, output_format)

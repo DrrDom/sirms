@@ -38,8 +38,7 @@ class Mol3:
 
     def AddAtom(self, id, label, x, y, z, formal_charge):
         self.atoms[id] = {'label': label, 'x': x, 'y': y, 'z': z,
-                          'property': {'elm': {'label': label, 'value': label, 'weight': elements.index(label)},
-                                       'none': {'label': 'A', 'value': 'A', 'weight': 0}},
+                          'property': {},    # will contain dicts of type 'elm': {'label': ['C'], 'value': 'C'}
                           'formal_charge': formal_charge}
         self.bonds[id] = dict()
 

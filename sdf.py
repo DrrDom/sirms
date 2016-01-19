@@ -64,8 +64,12 @@ def add_property_to_atoms(mol, data_dict, fsetup):
         for i, a in enumerate(sorted(mol.atoms.keys())):
             # if value is numeric use ranges, if value is string use it as label itself
             label = data_dict[prop_name][i] if type(data_dict[prop_name][i]) is str else RangedLetter(data_dict[prop_name][i], prop_range)
+            # if label is represented as A|D three labels should be created A, D and AD
+            label_full = label.split('|')
+            if len(label_full) > 1:
+                label_full.insert(0, label.replace('|', ''))
             mol.atoms[a]['property'][prop_name] = {'value': data_dict[prop_name][i],
-                                                   'label': label}
+                                                   'label': label_full}
 
 
 def get_sdf_field(sdf_lines, property_name):
