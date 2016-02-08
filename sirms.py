@@ -21,6 +21,7 @@ from itertools import combinations, chain, product
 from collections import OrderedDict
 
 from sdf import ReadSDF, ReadRDF, ReadRXN
+from labels import SetLabelsInternal
 from ppgfunctions import *
 from canon import LoadSirmsDict, GetCanonNameByDict, GenCanonName, GetSirmsType2, GetSirmsType
 from multiprocessing import Pool, cpu_count
@@ -136,20 +137,9 @@ def concat_reaction_sirms(sirms):
 #===============================================================================
 # SIRMS
 
-def SetLabels(mols, opt_diff, input_fname):
+def SetLabelsExternal(mols, opt_diff, input_fname):
     for s_diff in opt_diff:
-        if s_diff not in ['elm', 'none']:
-            files.LoadRangedProperty(mols, GetWorkDir(input_fname), GetFileNameNoExt(input_fname) + '.' + s_diff)
-    return (None)
-
-
-def SetBuiltinLabels(mols, opt_diff):
-    for mol in mols.values():
-        for atom in mol.atoms.values():
-            if 'elm' in opt_diff:
-                atom['property']['elm'] = {'label': [atom['label']], 'value': atom['label']}
-            if 'none' in opt_diff:
-                atom['property']['none'] = {'label': ['A'], 'value': 'A'}
+        files.LoadRangedProperty(mols, GetWorkDir(input_fname), GetFileNameNoExt(input_fname) + '.' + s_diff)
 
 
 def CalcSingleCompSirms(mol, sirms_dict, diff_list, sirms_types, noH, verbose, frags=None):
@@ -481,9 +471,9 @@ def main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname
         return None
 
     # set property labels on atoms from external data files
-    SetLabels(mols, opt_diff_ext, in_fname)
-    # set lebels of built-in types
-    SetBuiltinLabels(mols, opt_diff_builtin)
+    SetLabelsExternal(mols, opt_diff_ext, in_fname)
+    # set labels of built-in types
+    SetLabelsInternal(mols, opt_diff_builtin)
 
     if mix_fname is None and not quasimix and input_file_extension == 'sdf':
 
