@@ -113,35 +113,3 @@ def GetAtomsCombinations(mol, min_num_components=1, max_num_components=2, min_nu
                 yield tuple(set.union(*[res[i] for i in comb]))
 
 
-
-# mol = {"bonds": {1: [3, 5], 2: [3], 3: [1, 2, 4], 4: [3, 5], 5: [1, 4]}}
-# mol = {"bonds": {1: [3], 2: [3], 3: [1, 2, 4], 4: [3, 5], 5: [4, 6], 6: [5]}}
-
-# res = []
-#
-# GenConnectedSubgraphs(mol, set(mol["bonds"].keys()), min_num_atoms=1, max_num_atoms=max_num_atoms, res=res)
-#
-# print(len(res), res)
-# r = [GetAllNeighbours(mol, v) for v in res]
-# print(len(r), r)
-#
-# # print(res[0])
-# # print(GetAllNeighbours(mol, res[0]))
-#
-# res2 = []
-#
-# for n in range(min_num_components, max_num_components + 1):
-#     for comb in itertools.combinations(range(len(res)), n):
-#         if min_num_atoms <= sum(len(res[i]) for i in comb) <= max_num_atoms and (len(comb) == 1 or not set.intersection(*[r[i] for i in comb])):
-#             print([res[i] for i in comb])
-#             res2.append(set.union(*[res[i] for i in comb]))
-#
-# print(len(res2), res2)
-#
-
-
-
-
-
-# res = [tuple(sorted(v)) for v in res]
-# print(len(set(res)), set(res))

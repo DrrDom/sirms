@@ -14,7 +14,7 @@ import string
 import random
 from collections import OrderedDict
 
-from mols import Mol3 as Mol
+from mols import SmilesMol3 as Mol
 from files import ReadPropertyRange, RangedLetter
 
 

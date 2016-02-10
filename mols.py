@@ -10,6 +10,7 @@
 #-------------------------------------------------------------------------------
 
 from itertools import combinations
+import copy
 
 
 class Mol3:
@@ -77,3 +78,136 @@ class Mol3:
             for a1, a2 in combinations(cycle, 2):
                 if self.GetBondOrder(a1, a2) == 2:
                     self.bonds[a1][a2] = self.bonds[a2][a1] = (2, 3)
+
+
+class SmilesMol3(Mol3):
+
+    primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107,
+              109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229,
+              233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317, 331, 337, 347, 349, 353, 359,
+              367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491,
+              499, 503, 509, 521, 523, 541, 547, 557, 563, 569, 571, 577, 587, 593, 599, 601, 607, 613, 617, 619, 631, 641,
+              643, 647, 653, 659, 661, 673, 677, 683, 691, 701, 709, 719, 727, 733, 739, 743, 751, 757, 761, 769, 773, 787,
+              797, 809, 811, 821, 823, 827, 829, 839, 853, 857, 859, 863, 877, 881, 883, 887, 907, 911, 919, 929, 937, 941,
+              947, 953, 967, 971, 977, 983, 991, 997, 1009]
+
+    tosmileskeys = {0: '.', 1: '-', 2: '=', 3: '#', 4: ':', 8: '~'}
+
+    def __tosmiles(self, bond):
+        return self.tosmileskeys[bond]
+
+    def __getSmiles(self, trace, inter, labels_dict):
+        # trace: atom ids
+        # inter: selected atom id
+        strace = set(trace)
+        iterlist = set(self.bonds[inter].keys()).intersection(self.sub).difference(trace[-2:])
+
+        # solution for unbounded fragments
+        # if not iterlist and strace != self.sub:
+        #     remained = {k: self.levels[k] for k in self.sub.difference(strace)}
+        #     iterlist = {min(remained, key=remained.get)}
+
+        # get atom label
+        smi = [labels_dict[inter]]
+
+        concat = []
+        stoplist = []
+        iterlen = len(iterlist) - 1
+        for b, i in enumerate(sorted(list(iterlist), key=self.levels.get)):
+            if i in strace:
+                if i not in stoplist:
+                    # костыль для циклов. чтоб не было 2х проходов.
+                    cyc = next(self.nextnumb)
+                    concat += [(i, cyc, inter)]
+                    smi[0] += '%s%d' % (self.__tosmiles(self.GetBondOrder(inter, i)), cyc)
+                if b == iterlen and len(smi) > 3:
+                    smi[-1] = smi[-3] = ''
+                continue
+            deep = self.__getSmiles(copy.copy(trace + [i]), i, labels_dict)
+            strace.update(deep[0])
+
+            for j in deep[2]:
+                if j[0] == inter:
+                    stoplist += [j[2]]
+                    smi[0] += '%s%d' % (self.__tosmiles(self.GetBondOrder(inter, j[2])), j[1])
+                else:
+                    concat.append(j)
+
+            smi += ['(' if iterlen - b else '', '%s' % self.__tosmiles(self.GetBondOrder(inter, i)) + deep[1],
+                    ')' if iterlen - b else '']
+
+        return strace, ''.join(smi), concat
+
+    def __getMorgan(self, sub, labels):
+        """
+        modified morgan algorithm
+        init with prime numbers as weights according to labels
+        iteratively update weight by sum up with weight of neighbours multiplied by bond order
+        return: dict with atoms hash
+        """
+        a = sorted(set(labels))
+        newweights = {x: self.primes[a.index(labels[i])] for i, x in enumerate(sub)}
+        self.__buffer = 0
+        while self.__accept(newweights) and len(set(newweights.values())) < len(sub):
+            weights = copy.copy(newweights)
+            for i in sub:
+                l = sum([weights[x] * self.GetBondOrder(i, x) / 100 for x in self.bonds[i].keys() if x in sub])
+                newweights[i] += l
+        return newweights
+
+    def __accept(self, numb):
+        """
+        stop-function to interrupt Morgan algorithm
+        """
+        numl = len(set(numb.values()))
+
+        if self.__buffer >= numl:
+            return False
+        self.__buffer = numl
+        return True
+
+    # def __getWeininger(self, sub, labels):
+    #     num = 0
+    #     a = sorted(set(labels))
+    #     newweights = ((x, a.index(labels[i]) * 100 + len(self.bonds[x])) for i, x in enumerate(sub))
+    #     while len(set(newweights)) < len(sub):
+    #
+    #         newweights = {x: self.primes[a.index(labels[i])] for i, x in enumerate(sub)}
+    #
+    #         num = set()
+    #
+    #     pass
+
+    def get_name(self, sub, labels):
+
+        # if {10, 11, 12}.issubset(sub):
+        #     # if 'H' in labels:
+        #     if set(sub).intersection([24, 20]):
+        #         print(sub)
+
+        self.nextnumb = self.__numb()
+        self.sub = set(sub)
+        self.levels = self.__getMorgan(sub, labels)
+        inter = min(self.levels, key=self.levels.get)
+
+        res = [self.__getSmiles([inter], inter, dict(zip(sub, labels)))]
+        visited = res[0][0]
+        while visited != self.sub:
+            remained = {k: self.levels[k] for k in self.sub.difference(visited)}
+            inter = min(remained, key=remained.get)
+            res.append(self.__getSmiles([inter], inter, dict(zip(sub, labels))))
+            visited = visited.union(res[-1][0])
+
+        # if {10, 11, 12}.issubset(sub):
+        #     # if 'H' in labels:
+        #     if set(sub).intersection([24, 20]):
+        #         print(sub, '.'.join([i[1] for i in res]))
+
+        return '.'.join([i[1] for i in res])
+
+    def __numb(self):
+        i = 1
+        while True:
+            yield i
+            i += 1
+

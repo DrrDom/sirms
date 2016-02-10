@@ -143,7 +143,7 @@ def SetLabelsExternal(mols, opt_diff, input_fname):
         files.LoadRangedProperty(mols, GetWorkDir(input_fname), GetFileNameNoExt(input_fname) + '.' + s_diff)
 
 
-def CalcSingleCompSirms(mol, sirms_dict, diff_list, min_num_atoms, max_num_atoms, min_num_components,
+def CalcSingleCompSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_components,
                         max_num_components, noH, verbose, frags=None):
     """
     INPUT:
@@ -162,7 +162,6 @@ def CalcSingleCompSirms(mol, sirms_dict, diff_list, min_num_atoms, max_num_atoms
 
     if verbose:
         cur_time = time.time()
-    nodict = len(sirms_dict) == 0
 
     d = {mol.title: {}}
     if frags is not None:
@@ -175,17 +174,11 @@ def CalcSingleCompSirms(mol, sirms_dict, diff_list, min_num_atoms, max_num_atoms
 
     for a in GetAtomsCombinations(mol, min_num_components=min_num_components, max_num_components=max_num_components,
                                   min_num_atoms=min_num_atoms, max_num_atoms=max_num_atoms, noH=noH):
-        # start simplex calculation
-        bonds = [mol.GetBondType(b[0], b[1]) for b in combinations(a, 2)]
+
         for s_diff in diff_list:
             labels = [mol.atoms[a_id]['property'][s_diff]['label'] for a_id in a]
-            # iterate through all possible combinations of labels
             for labels_set in product(*labels):
-                if nodict:
-                    canon_name = GenCanonName(labels_set, bonds, a)
-                else:
-                    canon_name = GetCanonNameByDict(labels_set, bonds, sirms_dict)
-                sirms_name = 'S|A|' + s_diff + '|' + canon_name
+                sirms_name = 'S|' + s_diff + '|' + mol.get_name(list(a), labels_set)
                 d[mol.title][sirms_name] = d[mol.title].get(sirms_name, 0) + 1
                 if local_frags is not None:
                     for frag in local_frags.keys():
@@ -208,7 +201,7 @@ def CalcSingleCompSirms(mol, sirms_dict, diff_list, min_num_atoms, max_num_atoms
     return (output)
 
 
-def CalcBinMixSirms(mol_list, id_list, sirms_dict, diff_list, min_num_atoms, max_num_atoms, min_num_components,
+def CalcBinMixSirms(mol_list, id_list, diff_list, min_num_atoms, max_num_atoms, min_num_components,
                     max_num_components, noH, mix_ordered, verbose):
     """
     Calculate simplex descriptors which belong only to both components of a binary mixture
@@ -278,7 +271,7 @@ def CalcBinMixSirms(mol_list, id_list, sirms_dict, diff_list, min_num_atoms, max
     if verbose:
         print(mol_list[0].title, mol_list[1].title, (str(round(time.time() - cur_time, 1)) + ' s').rjust(
             77 - len(mol_list[0].title) - len(mol_list[1].title)))
-    return (d)
+    return d
 
 
 def CalcMixSirms(mol_list, ratio_list, single_sirms, base_bin_mix_sirms, mix_ordered):
@@ -323,10 +316,10 @@ def CalcMixSirms(mol_list, ratio_list, single_sirms, base_bin_mix_sirms, mix_ord
         mix_name = (m_titles[i1], m_titles[i2]) if m_titles[i1] < m_titles[i2] else (m_titles[i2], m_titles[i1])
         for s_name in base_bin_mix_sirms[mix_name].keys():
             d[s_name] = d.get(s_name, 0) + min_ratio * base_bin_mix_sirms[mix_name][s_name]
-    return (d)
+    return d
 
 
-def GetBaseBinMixSirmsMP(uniq_bin_mix, mols, sirms_dict, sirms_diff, min_num_atoms, max_num_atoms, min_num_components,
+def GetBaseBinMixSirmsMP(uniq_bin_mix, mols, sirms_diff, min_num_atoms, max_num_atoms, min_num_components,
                          max_num_components, noH, mix_ordered, ncores, verbose):
     """
     return dictionary of descriptors of all binary mixtures in a dataset,
@@ -344,7 +337,7 @@ def GetBaseBinMixSirmsMP(uniq_bin_mix, mols, sirms_dict, sirms_diff, min_num_ato
     res = []
     if ncores == -1:
         if not mix_ordered:
-            res = [CalcBinMixSirms([mols[n1], mols[n2]], [0, 1], sirms_dict, sirms_diff, min_num_atoms, max_num_atoms,
+            res = [CalcBinMixSirms([mols[n1], mols[n2]], [0, 1], sirms_diff, min_num_atoms, max_num_atoms,
                                    min_num_components, max_num_components, noH, mix_ordered, verbose)
                    for n1, n2 in mix_set]
         else:
@@ -352,14 +345,14 @@ def GetBaseBinMixSirmsMP(uniq_bin_mix, mols, sirms_dict, sirms_diff, min_num_ato
                 id1, name1 = n1.split('#', 1)
                 id2, name2 = n2.split('#', 1)
                 res.append(
-                    CalcBinMixSirms([mols[name1], mols[name2]], [id1, id2], sirms_dict, sirms_diff, min_num_atoms,
+                    CalcBinMixSirms([mols[name1], mols[name2]], [id1, id2], sirms_diff, min_num_atoms,
                                     max_num_atoms, min_num_components, max_num_components, noH, mix_ordered, verbose))
         d = {mix_set[i]: r for i, r in enumerate(res)}
     else:
         p = Pool(processes=cpu_count()) if ncores > 0 else Pool(processes=abs(ncores))
         if not mix_ordered:
             res = [p.apply_async(CalcBinMixSirms,
-                                 [[mols[n1], mols[n2]], [0, 1], sirms_dict, sirms_diff, min_num_atoms, max_num_atoms,
+                                 [[mols[n1], mols[n2]], [0, 1], sirms_diff, min_num_atoms, max_num_atoms,
                                   min_num_components, max_num_components, noH, mix_ordered, verbose])
                    for n1, n2 in mix_set]
         else:
@@ -367,7 +360,7 @@ def GetBaseBinMixSirmsMP(uniq_bin_mix, mols, sirms_dict, sirms_diff, min_num_ato
                 id1, name1 = n1.split('#', 1)
                 id2, name2 = n2.split('#', 1)
                 res.append(p.apply_async(CalcBinMixSirms,
-                                         [[mols[name1], mols[name2]], [id1, id2], sirms_dict, sirms_diff, min_num_atoms,
+                                         [[mols[name1], mols[name2]], [id1, id2], sirms_diff, min_num_atoms,
                                           max_num_atoms, min_num_components, max_num_components, noH, mix_ordered,
                                           verbose]))
         d = {mix_set[i]: r.get() for i, r in enumerate(res)}
@@ -375,7 +368,7 @@ def GetBaseBinMixSirmsMP(uniq_bin_mix, mols, sirms_dict, sirms_diff, min_num_ato
     return (d)
 
 
-def CalcSingleCompSirmsMP(mol_list, sirms_dict, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
+def CalcSingleCompSirmsMP(mol_list, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
                           max_num_components, opt_noH, ncores, opt_verbose, frags=None):
     """
     Multi-processed calculation of descriptors of single compounds depending on ncores option
@@ -400,7 +393,7 @@ def CalcSingleCompSirmsMP(mol_list, sirms_dict, opt_diff, min_num_atoms, max_num
     d = OrderedDict()
     if abs(ncores) > 1:
         p = Pool(processes=min(len(mol_list), abs(ncores)))
-        res = [p.apply_async(CalcSingleCompSirms, [mol, sirms_dict, opt_diff, min_num_atoms, max_num_atoms,
+        res = [p.apply_async(CalcSingleCompSirms, [mol, opt_diff, min_num_atoms, max_num_atoms,
                                                    min_num_components, max_num_components, opt_noH, opt_verbose, frags])
                for mol in mol_list]
         for r in res:
@@ -408,7 +401,7 @@ def CalcSingleCompSirmsMP(mol_list, sirms_dict, opt_diff, min_num_atoms, max_num
         p.close()
     else:
         for mol in mol_list:
-            d.update(CalcSingleCompSirms(mol, sirms_dict, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
+            d.update(CalcSingleCompSirms(mol, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
                                          max_num_components, opt_noH, opt_verbose, frags))
     return (d)
 
@@ -446,14 +439,9 @@ def GenQuasiMix(mol_names):
 #===============================================================================
 # Main cycle
 
-def main_params(in_fname, out_fname, opt_no_dict, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
+def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
                 max_num_components, mix_fname, opt_mix_ordered, opt_ncores, opt_verbose, opt_noH, frag_fname,
                 parse_stereo, quasimix, id_field_name, output_format):
-
-    if opt_no_dict:
-        sirms_dict = {}
-    else:
-        sirms_dict = LoadSirmsDict()
 
     # define which property will be loaded from external file or from sdf-file
     opt_diff_builtin = [v for v in opt_diff if v in ['elm', 'none']]
@@ -482,7 +470,7 @@ def main_params(in_fname, out_fname, opt_no_dict, opt_diff, min_num_atoms, max_n
 
         frags = files.LoadFragments(frag_fname)
         # calc simplex descriptors
-        sirms = CalcSingleCompSirmsMP([m for m in mols.values()], sirms_dict, opt_diff, min_num_atoms, max_num_atoms,
+        sirms = CalcSingleCompSirmsMP([m for m in mols.values()], opt_diff, min_num_atoms, max_num_atoms,
                                       min_num_components, max_num_components, opt_noH, opt_ncores, opt_verbose, frags)
         SaveSimplexes(out_fname, sirms, output_format)
 
@@ -495,12 +483,12 @@ def main_params(in_fname, out_fname, opt_no_dict, opt_diff, min_num_atoms, max_n
             else:
                 mix = files.LoadMixturesTxt(mix_fname)
         mols_used = set(chain.from_iterable([m['names'] for m in mix.values()]))
-        base_single_sirms = CalcSingleCompSirmsMP([m for m in mols.values() if m.title in mols_used], sirms_dict,
+        base_single_sirms = CalcSingleCompSirmsMP([m for m in mols.values() if m.title in mols_used],
                                                   opt_diff, min_num_atoms, max_num_atoms, min_num_components,
                                                   max_num_components, opt_noH, opt_ncores, opt_verbose)
         # calc basic sirms for all binary mixtures (no weights, all mixtures are 1:1)
         uniq_bin_mix = GetUniqBinMixNames(mix, opt_mix_ordered)
-        base_bin_mix_sirms = GetBaseBinMixSirmsMP(uniq_bin_mix, mols, sirms_dict, opt_diff, min_num_atoms,
+        base_bin_mix_sirms = GetBaseBinMixSirmsMP(uniq_bin_mix, mols, opt_diff, min_num_atoms,
                                                   max_num_atoms, min_num_components, max_num_components, opt_noH,
                                                   opt_mix_ordered, opt_ncores, opt_verbose)
         mix_sirms = OrderedDict()
@@ -527,11 +515,7 @@ def main():
                         help='format of output file with calculated descriptors (txt|svm). '
                              'Txt - ordinary tab-separated text file. Svm - sparse format, two additional file will '
                              'be save with extensions colnames amd rownames. Default: txt.')
-    parser.add_argument('-n', '--nodict', action='store_true', default=False,
-                        help='if set this flag the simplexes will be generated slower but this procedure can handle '
-                             'any bond types, while the other approach (which uses dictionary) can handle structures '
-                             'containing only 0-4 bond types')
-    parser.add_argument('-d', '--diff', metavar='', default=['elm'], nargs='*',
+    parser.add_argument('-a', '--atoms_labeling', metavar='', default=['elm'], nargs='*',
                         help='list of atom labeling schemes separated by space. Built-in scheme is element (elm) and '
                              'topology (none). '
                              'To include other schemes user should specify the name of the corresponding property '
@@ -583,8 +567,7 @@ def main():
     for o, v in args.items():
         if o == "in": in_fname = v
         if o == "out": out_fname = v
-        if o == "nodict": opt_no_dict = v
-        if o == "diff": opt_diff = v
+        if o == "atoms_labeling": opt_diff = v
         if o == "mixtures": mix_fname = v
         if o == "mix_ordered": opt_mix_ordered = v
         if o == "ncores": opt_ncores = cpu_count() if v == "all" else int(v)
@@ -615,7 +598,7 @@ def main():
         print("FATAL ERROR: min_num_components should not greater than max_num_components")
         exit()
 
-    main_params(in_fname, out_fname, opt_no_dict, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
+    main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
                 max_num_components, mix_fname, opt_mix_ordered, opt_ncores, opt_verbose, opt_noH, frag_fname,
                 parse_stereo, quasimix, id_field_name, output_format)
 
