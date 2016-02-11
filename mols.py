@@ -80,7 +80,89 @@ class Mol3:
                     self.bonds[a1][a2] = self.bonds[a2][a1] = (2, 3)
 
 
-class SmilesMol3(Mol3):
+class Mol4(Mol3):
+
+    def __GetNumberConnectedComponents(self, atoms):
+
+        res = 0
+        visited = [False] * len(atoms)
+
+        def dfs(i):
+            visited[i] = True
+            for a in self.bonds[atoms[i]].keys():
+                if a in atoms and not visited[atoms.index(a)]:
+                    dfs(atoms.index(a))
+
+        for i in range(len(atoms)):
+            if not visited[i]:
+                dfs(i)
+                res += 1
+
+        return res
+
+    def __GenConnectedSubgraphs(self, not_visited, min_num_atoms=4, max_num_atoms=4, curr_subset=set(), neighbors=set(), res=[]):
+
+        if min_num_atoms <= len(curr_subset) <= max_num_atoms:
+            res.append(curr_subset)
+
+        if not curr_subset:
+            candidates = set(not_visited)
+        else:
+            candidates = not_visited.intersection(neighbors)
+
+        if candidates and len(curr_subset) < max_num_atoms:
+            for a in candidates:
+                not_visited.remove(a)
+                tmp1 = set(not_visited)
+                tmp2 = set(curr_subset)
+                tmp2.add(a)
+                tmp3 = not_visited.intersection(self.bonds[a].keys())
+                tmp3 = neighbors.union(tmp3)
+                self.__GenConnectedSubgraphs(tmp1, min_num_atoms=min_num_atoms, max_num_atoms=max_num_atoms, curr_subset=tmp2, neighbors=tmp3, res=res)
+
+    def __GetAllNeighbours(self, atoms):
+        output = set(atoms)
+        for a in atoms:
+            output = output.union(self.bonds[a].keys())
+        return output
+
+
+    def GetAtomsCombinations(self, min_num_components=1, max_num_components=2, min_num_atoms=4, max_num_atoms=4, noH=False):
+
+        def CheckIntersection(sets, neighbour_sets, ids):
+            if set.intersection(*[sets[i] for i in ids]):
+                return True
+            for i in ids:
+                for j in ids:
+                    if i != j:
+                        if sets[i].intersection(neighbour_sets[j]):
+                            return True
+            return False
+
+        if noH:
+            atoms = set(a for a in self.atoms.keys() if self.atoms[a]["label"] != 'H')
+        else:
+            atoms = set(self.atoms.keys())
+
+        # storage of results
+        res = []
+        # if only single component fragments are looking for then there is no need to search for fragments smaller than nim_num_atoms
+        if max_num_components == 1:
+            self.__GenConnectedSubgraphs(atoms, min_num_atoms=min_num_atoms, max_num_atoms=max_num_atoms, res=res)
+        else:
+            self.__GenConnectedSubgraphs(atoms, min_num_atoms=1, max_num_atoms=max_num_atoms, res=res)
+
+        # get neighbours
+        nb = [self.__GetAllNeighbours(v) for v in res]
+
+        for n in range(min_num_components, max_num_components + 1):
+            for comb in combinations(range(len(res)), n):
+                # if min_num_atoms <= sum(len(res[i]) for i in comb) <= max_num_atoms and (len(comb) == 1 or not set.intersection(*[nb[i] for i in comb])):
+                if min_num_atoms <= sum(len(res[i]) for i in comb) <= max_num_atoms and (len(comb) == 1 or not CheckIntersection(res, nb, comb)):
+                    yield tuple(set.union(*[res[i] for i in comb]))
+
+
+class SmilesMol3(Mol4):
 
     primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107,
               109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229,

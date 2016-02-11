@@ -24,8 +24,6 @@ from collections import OrderedDict
 from sdf import ReadSDF, ReadRDF, ReadRXN
 from labels import SetLabelsInternal
 from ppgfunctions import *
-from canon import LoadSirmsDict, GetCanonNameByDict, GenCanonName, GetSirmsType
-from subgraph import GetAtomsCombinations
 from multiprocessing import Pool, cpu_count
 
 
@@ -190,8 +188,8 @@ def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_com
     if for_mix:
         atom_count = dict()
 
-    for a in GetAtomsCombinations(mol, min_num_components=min_num_components, max_num_components=max_num_components,
-                                  min_num_atoms=min_num_atoms, max_num_atoms=max_num_atoms, noH=noH):
+    for a in mol.GetAtomsCombinations(min_num_components=min_num_components, max_num_components=max_num_components,
+                                      min_num_atoms=min_num_atoms, max_num_atoms=max_num_atoms, noH=noH):
 
         for s_diff in diff_list:
             labels = [mol.atoms[a_id]['property'][s_diff]['label'] for a_id in a]
