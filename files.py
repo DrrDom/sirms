@@ -101,11 +101,10 @@ def LoadRangedProperty(mols, setup_dir, prop_fname):
             m.atoms[a]['property'][prop_name] = {'value': values[i], 'label': label}
 
 
-def LoadMixturesTxt(fname):
+def LoadMixturesTxt(fname, mix_type):
     """
     Load mixture composition
-    INPUT: tab-delimited textfile with first line
-    !absolute ratio or !relative ratio (which desognates how to process ratio of components)
+    INPUT: tab-delimited text file
     mol_name_1  mol_name_2  first_component_ratio  second_component_ratio
     mol_name_1  mol_name_3  first_component_ratio  second_component_ratio
     ...
@@ -123,16 +122,14 @@ def LoadMixturesTxt(fname):
       'K-Ala-Glu_(1.0)+E-21_(1.0)': {'names': ['K-Ala-Glu', 'E-21'], 'ratios': [1.0, 1.0]} }
     """
     d = OrderedDict()
-    f = open(fname, 'rt')
-    header = f.readline()
-    if header.strip() == '!absolute ratio':
+
+    if mix_type == 'abs':
         abs_ratio = True
-    elif header.strip() == '!relative ratio':
-        abs_ratio = False
     else:
-        raise Exception(
-            'The first line of mixtures.txt file should contain the header "!absolute ratio" or "!relative ratio"')
-        sys.exit()
+        abs_ratio = False
+
+    f = open(fname, 'rt')
+
     while True:
         line = f.readline()
         if not line: break
@@ -145,7 +142,7 @@ def LoadMixturesTxt(fname):
         mol_ratios = [round(v, 4) for v in mol_ratios]
         mix_name = '+'.join([mol_names[i] + '_(' + str(mol_ratios[i]) + ')' for i in range(mix_num)])
         d[mix_name] = {'names': mol_names, 'ratios': mol_ratios}
-    return (d)
+    return d
 
 
 def LoadFragments(fname):

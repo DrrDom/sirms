@@ -41,6 +41,30 @@ def sirms_get_labeling(sirms_string):
     return sirms_string.rsplit('|', 2)[1]
 
 
+def sirms_get_mix_single(sirms_string):
+    return sirms_string.split('|', 2)[1]
+
+
+def sirms_invert_num_prob_type(sirms_string):
+    tmp = sirms_string.split('|')
+    if tmp[2] == 'num':
+        tmp[2] = 'prob'
+    else:
+        tmp[2] = 'num'
+    return '|'.join(tmp)
+
+
+def sirms_insert_reaction_info(sirms_string, prod_react):
+    """
+    prod_react: p or r
+    """
+    return prod_react + '|' + sirms_string.split('|', 1)[1]
+
+
+def sirms_gen_full_name(prod_react, single_mix, num_prob, labeling, smiles):
+    return prod_react + '|' + single_mix + '|' + num_prob + '|' + '|' + '|' + labeling + '|' + smiles
+
+
 #===============================================================================
 # Save simplexes
 
@@ -123,16 +147,16 @@ def concat_reaction_sirms(sirms):
         k, v = sirms.popitem(last=False)
         rx_id, role = k.rsplit('_', 1)
         # first letter from role is used as additional description
-        new_sirms_names = [role[0] + '|' + s for s in sorted(v.keys())]
+        new_sirms_names = [sirms_insert_reaction_info(s, role[0]) for s in sorted(v.keys())]
         s1 = {new_sirms_names[i]: v[sname] for i, sname in enumerate(sorted(v.keys()))}
 
         # take complimentary element (reactants or products of the same reaction)
         if role == 'reactants':
             k = rx_id + '_products'
-            new_sirms_names = ['p|' + s for s in sorted(sirms[k].keys())]
+            new_sirms_names = [sirms_insert_reaction_info(s, 'p') for s in sorted(sirms[k].keys())]
         elif role == 'products':
             k = rx_id + '_reactants'
-            new_sirms_names = ['r|' + s for s in sorted(sirms[k].keys())]
+            new_sirms_names = [sirms_insert_reaction_info(s, 'r') for s in sorted(sirms[k].keys())]
         else:
             print('Impossible error')
         v = sirms[k]
@@ -194,7 +218,9 @@ def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_com
         for s_diff in diff_list:
             labels = [mol.atoms[a_id]['property'][s_diff]['label'] for a_id in a]
             for labels_set in product(*labels):
-                sirms_name = 'S|' + s_diff + '|' + mol.get_name(a, labels_set)
+                sirms_name = sirms_gen_full_name(prod_react='', single_mix='S', num_prob='num', labeling=s_diff,
+                                                 smiles=mol.get_name(a, labels_set))
+                # sirms_name = 'S|' + s_diff + '|' + mol.get_name(a, labels_set)
                 d[mol.title][sirms_name] = d[mol.title].get(sirms_name, 0) + 1
                 if local_frags is not None:
                     # if there is no common atoms in simplex and fragment
@@ -217,7 +243,7 @@ def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_com
         print(mol.title, (str(round(time.time() - cur_time, 1)) + ' s').rjust(78 - len(mol.title)))
 
     if for_mix:
-        return (output, atom_count)
+        return output, atom_count
     else:
         return output
 
@@ -242,7 +268,7 @@ def CalcSingleSirms(mol_list, opt_diff, min_num_atoms, max_num_atoms, min_num_co
             sirms.update(res)
 
     if for_mix:
-        return (sirms, atom_counts)
+        return sirms, atom_counts
     else:
         return sirms
 
@@ -265,13 +291,11 @@ def CalcMixSirms(single_sirms, mix, sirms_atom_counts, atom_labeling, min_num_at
             tmp = [item.split('.') for item in tmp]
             # flatten list and sort to obtain canonical order
             tmp = sorted([item for sublist in tmp for item in sublist])
-            # get atomic property of descriptors (they all must have the same)
-            return 'M|' + sirms_get_labeling(sirms_names[0]) + '|' + '.'.join(tmp)
         else:
             # add component id before smile
             tmp = sorted([str(id + 1) + '_' + sirms_get_smile(item) for id, item in zip(ids, sirms_names)])
-            # get atomic property of descriptors (they all must have the same)
-            return 'M|' + sirms_get_labeling(sirms_names[0]) + '|' + '.'.join(tmp)
+        # get atomic property of descriptors (they all must have the same)
+        return sirms_gen_full_name(prod_react='', single_mix='M', num_prob='num', labeling=sirms_get_labeling(sirms_names[0]), smiles='|' + '.'.join(tmp))
 
     def select_sirms_by_labeling(sirms_names, labeling_name):
         substr = '|' + labeling_name + '|'
@@ -312,7 +336,7 @@ def CalcMixSirms(single_sirms, mix, sirms_atom_counts, atom_labeling, min_num_at
                             d_mix[mix_sirs_name] = d_mix.get(mix_sirs_name, 0) + mult(
                                 [d_tmp[mol_name].get(p[i], 0) for i, mol_name in enumerate(comb)])
 
-        # add single sirms
+        # add single sirms and filter them with given number of atoms
         sirms_names = set(list(chain.from_iterable(list(s.keys()) for s in single_sirms.values())))
         for name in sirms_names:
             if min_num_atoms <= sirms_atom_counts[name] <= max_num_atoms:
@@ -333,12 +357,33 @@ def GenQuasiMix(mol_names):
 
 
 #===============================================================================
+
+def CalcProbSirms(sirms, type):
+    if type in ['prob', 'both']:
+        for mol_name in sirms.keys():
+            d = dict()
+            s_mix = sum(v for k, v in sirms[mol_name].items() if sirms_get_mix_single(k) == 'M')
+            s_single = sum(v for k, v in sirms[mol_name].items() if sirms_get_mix_single(k) == 'S')
+            for k, v in sirms[mol_name].items():
+                if sirms_get_mix_single(k) == 'M':
+                    d[sirms_invert_num_prob_type(k)] = v/s_mix
+                else:
+                    d[sirms_invert_num_prob_type(k)] = v/s_single
+            if type == 'both':
+                sirms[mol_name].update(d)
+            elif type == 'prob':
+                sirms[mol_name] = d
+    return sirms
+
+
+#===============================================================================
 # Main cycle
 
 def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
-                max_num_components, min_num_mix_components, max_num_mix_components, mix_fname, opt_mix_ordered,
-                opt_ncores, opt_verbose, opt_noH, frag_fname, parse_stereo, self_assembly_mix, quasimix, id_field_name,
-                output_format):
+                max_num_components, min_num_mix_components, max_num_mix_components, mix_fname,
+                descriptors_transformation, mix_type, opt_mix_ordered, opt_ncores, opt_verbose, opt_noH,
+                frag_fname, parse_stereo, self_assembly_mix, quasimix, id_field_name, output_format):
+
     # define which property will be loaded from external file or from sdf-file
     opt_diff_builtin = [v for v in opt_diff if v in ['elm', 'none']]
     opt_diff_sdf = files.NotExistedPropertyFiles([v for v in opt_diff if v not in opt_diff_builtin], in_fname)
@@ -369,7 +414,6 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
         # calc simplex descriptors
         sirms = CalcSingleSirms(mols.values(), opt_diff, min_num_atoms, max_num_atoms, min_num_components,
                                 max_num_components, opt_noH, opt_verbose, frags, False)
-        SaveSimplexes(out_fname, sirms, output_format)
 
     else:
 
@@ -378,7 +422,7 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
             if quasimix:
                 mix = GenQuasiMix(list(mols.keys()))
             elif mix_fname is not None:
-                mix = files.LoadMixturesTxt(mix_fname)
+                mix = files.LoadMixturesTxt(mix_fname, mix_type)
             else:
                 print("Strange error occurred during mix preparation")
                 exit()
@@ -396,11 +440,13 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
 
         # filter single sirms with number of atoms lower than min_num_atoms
 
-
         if input_file_extension in ['rdf', 'rxn']:
             sirms = concat_reaction_sirms(sirms)
 
-        SaveSimplexes(out_fname, sirms, output_format)
+    if descriptors_transformation in ['prob', 'both']:
+        sirms = CalcProbSirms(sirms, descriptors_transformation)
+
+    SaveSimplexes(out_fname, sirms, output_format)
 
 
 def main():
@@ -432,27 +478,40 @@ def main():
     parser.add_argument('--max_num_components', metavar='', default=2,
                         help='The maximal number of disconnected groups of atoms in the fragment. '
                              'Default value = 2.')
+    parser.add_argument('-s', '--stereo', action='store_true', default=False,
+                        help='parse stereo information from the <stereoanalysis> field generated by Chemaxon. '
+                             'Works only for double bonds in sdf.')
+    parser.add_argument('-q', '--quasi_mix', action='store_true', default=False,
+                        help='calculate quasi-mixture descriptors for pure compounds. Works only with sdf files.')
+    parser.add_argument('-m', '--mixtures', metavar='mixtures.txt', default=None,
+                        help='text file containing list of mixtures of components and their ratios. Names of components'
+                             ' should be the same as in input.sdf file. The header should contain the string '
+                             '"!absolute ratio" or "!relative ratio". Works only with sdf files.')
     parser.add_argument('--min_num_mix_components', metavar='', default=2,
                         help='The minimal number of molecules which contribute to mixture fragments. '
                              'Default value = 2 (and cannot be less)')
     parser.add_argument('--max_num_mix_components', metavar='', default=2,
                         help='The maximal number of molecules which contribute to mixture fragments. '
                              'Default value = 2 (take into account only binary interactions)')
-    parser.add_argument('-s', '--stereo', action='store_true', default=False,
-                        help='parse stereo information from the <stereoanalysis> field generated by Chemaxon. '
-                             'Works only for double bonds in sdf.')
-    parser.add_argument('-m', '--mixtures', metavar='mixtures.txt', default=None,
-                        help='text file containing list of mixtures of components and their ratios. Names of components'
-                             ' should be the same as in input.sdf file. The header should contain the string '
-                             '"!absolute ratio" or "!relative ratio". Works only with sdf files.')
+    parser.add_argument('--descriptors_transformation', metavar='num|prob|both', default='num',
+                        help='num: numbers of fragments (for single compounds) or number of fragments combinations '
+                             'weighted by their molar ratios (for mixtures). '
+                             'prob: final value of descriptors are divided on sum of all descriptors to '
+                             'describe probability of each descriptor. Descriptors for single compounds and mixtures '
+                             'are weighted separately. both: will generate both types of descriptors. Default: num.')
+    parser.add_argument('--mix_type', metavar='abs|rel', default='abs',
+                        help='abs: means that amount of components given in a mixture file will be considered as is. '
+                             'rel: means that amount of components given in a mixture file will be taken as relative '
+                             'amount and will be scaled to sum of 1. Default: abs.')
     parser.add_argument('-r', '--mix_ordered', action='store_true', default=False,
                         help='if set this flag the mixtures will be considered ordered, otherwise as unordered. '
+                             'In ordered mixtures role of each component is known and position of a component in a '
+                             'mixture description will be taken into account. In unordered mixtures all components are '
+                             'equitable and their roles don''t depend on their positions in mixture description. '
                              'Used only in combination with -m key.')
     parser.add_argument('--self_assembly_mix', action='store_true', default=False,
                         help='calculates mixture descriptors between components with themselves in order to take into '
                              'account self-interaction of components. Default: false.')
-    parser.add_argument('-q', '--quasi_mix', action='store_true', default=False,
-                        help='calculate quasi-mixture descriptors for pure compounds. Works only with sdf files.')
     parser.add_argument('-c', '--ncores', metavar='[all, 1, 2, ...]', default='1',
                         help='number of cores used for descriptors calculation. Currently disabled.')
     parser.add_argument('-v', '--verbose', action='store_true', default=False,
@@ -490,6 +549,8 @@ def main():
         if o == "min_num_mix_components": min_num_mix_components = v
         if o == "max_num_mix_components": max_num_mix_components = v
         if o == "self_assembly_mix": self_assembly_mix = v
+        if o == "descriptors_transformation": descriptors_transformation = v
+        if o == "mix_type": mix_type = v
     if quasimix:
         opt_mix_ordered = False
         mix_fname = None
@@ -497,27 +558,33 @@ def main():
         opt_mix_ordered = False
         mix_fname = None
     if output_format not in ['svm', 'txt']:
-        print("Wrong output format specified - %s. On;y txt or svm are allowed." % output_format)
+        print("INPUT ERROR: wrong output format specified - %s. On;y txt or svm are allowed." % output_format)
         exit()
     if min_num_atoms > max_num_atoms:
-        print("FATAL ERROR: min_num_atoms should not be greater than max_num_atoms")
+        print("INPUT ERROR: min_num_atoms should not be greater than max_num_atoms.")
         exit()
     if min_num_components > max_num_components:
-        print("FATAL ERROR: min_num_components should not be greater than max_num_components")
+        print("INPUT ERROR: min_num_components should not be greater than max_num_components.")
         exit()
     if min_num_mix_components > max_num_mix_components or min_num_mix_components < 2:
-        print("FATAL ERROR: min_num_mix_components should not be greater than max_num_mix_components and "
+        print("INPUT ERROR: min_num_mix_components should not be greater than max_num_mix_components and "
               "minimal value of min_num_mix_components should be 2 or greater.")
         exit()
     if min_num_mix_components > max_num_components:
-        print("FATAL ERROR: minimal number of mixture components (min_num_mix_components) cannot be greater than "
-              "maximal number of components in a fragment descriptor (min_num_components)")
+        print("INPUT ERROR: minimal number of mixture components (min_num_mix_components) cannot be greater than "
+              "maximal number of components in a fragment descriptor (min_num_components).")
+        exit()
+    if mix_type not in ['abs', 'rel']:
+        print("INPUT ERROR: mixture type (mix_type) can be only abs or rel.")
+        exit()
+    if descriptors_transformation not in ['num', 'prob', 'both']:
+        print("INPUT ERROR: type of mixture descriptors (types_mix_descriptors) can be only num, prob or both.")
         exit()
 
     main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
-                max_num_components, min_num_mix_components, max_num_mix_components, mix_fname, opt_mix_ordered,
-                opt_ncores, opt_verbose, opt_noH, frag_fname, parse_stereo, self_assembly_mix, quasimix, id_field_name,
-                output_format)
+                max_num_components, min_num_mix_components, max_num_mix_components, mix_fname,
+                descriptors_transformation, mix_type, opt_mix_ordered, opt_ncores, opt_verbose, opt_noH,
+                frag_fname, parse_stereo, self_assembly_mix, quasimix, id_field_name, output_format)
 
 
 if __name__ == '__main__':
