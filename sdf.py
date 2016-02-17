@@ -304,7 +304,7 @@ def ReadRDF(fname, id_field_name):
         for line in rdf:
             if line.find("$RFMT") == 0:
                 if rxn:
-                    rx_mols, rx_mix = process_rdf_reaction(rxn, id_field_name, 'rx_id_' + str(i))
+                    rx_mols, rx_mix = process_rdf_reaction(rxn, id_field_name, 'rx_autogen_id_' + str(i))
                     for mol in rx_mols:
                         mols[mol.title] = mol
                     mix.update(rx_mix)
@@ -313,7 +313,7 @@ def ReadRDF(fname, id_field_name):
             else:
                 rxn.append(line.rstrip())
 
-        rx_mols, rx_mix = process_rdf_reaction(rxn, id_field_name, 'rx_id_' + str(i))
+        rx_mols, rx_mix = process_rdf_reaction(rxn, id_field_name, 'rx_autogen_id_' + str(i))
         for mol in rx_mols:
             mols[mol.title] = mol
         mix.update(rx_mix)
@@ -334,7 +334,7 @@ def ReadRXN(fname, id_field_name):
         for line in f:
             if line.find("$RXN") == 0:
                 if rxn:
-                    rx_mols, rx_mix = process_rxn_reaction(rxn, id_field_name, 'rx_id_' + str(i))
+                    rx_mols, rx_mix = process_rxn_reaction(rxn, id_field_name, 'rx_autogen_id_' + str(i))
                     for mol in rx_mols:
                         mols[mol.title] = mol
                     mix.update(rx_mix)
@@ -343,7 +343,7 @@ def ReadRXN(fname, id_field_name):
             else:
                 rxn.append(line.rstrip())
 
-        rx_mols, rx_mix = process_rxn_reaction(rxn, id_field_name, 'rx_id_' + str(i))
+        rx_mols, rx_mix = process_rxn_reaction(rxn, id_field_name, 'rx_autogen_id_' + str(i))
         for mol in rx_mols:
             mols[mol.title] = mol
         mix.update(rx_mix)

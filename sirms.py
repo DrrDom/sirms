@@ -276,8 +276,8 @@ def CalcSingleSirms(mol_list, opt_diff, min_num_atoms, max_num_atoms, min_num_co
 #===============================================================================
 
 def CalcMixSirms(single_sirms, mix, sirms_atom_counts, atom_labeling, min_num_atoms=4, max_num_atoms=4,
-                 min_num_mix_components=2, max_num_mix_components=2, min_num_components=2, max_num_components=2,
-                 verbose=False, ordered=False, self_assembly_mix=False):
+                 min_num_mix_components=2, max_num_mix_components=2, verbose=False, ordered=False,
+                 self_assembly_mix=False):
 
     def mult(values):
         p = 1
@@ -295,7 +295,7 @@ def CalcMixSirms(single_sirms, mix, sirms_atom_counts, atom_labeling, min_num_at
             # add component id before smile
             tmp = sorted([str(id + 1) + '_' + sirms_get_smile(item) for id, item in zip(ids, sirms_names)])
         # get atomic property of descriptors (they all must have the same)
-        return sirms_gen_full_name(prod_react='', single_mix='M', num_prob='num', labeling=sirms_get_labeling(sirms_names[0]), smiles='|' + '.'.join(tmp))
+        return sirms_gen_full_name(prod_react='', single_mix='M', num_prob='num', labeling=sirms_get_labeling(sirms_names[0]), smiles='.'.join(tmp))
 
     def select_sirms_by_labeling(sirms_names, labeling_name):
         substr = '|' + labeling_name + '|'
@@ -331,10 +331,9 @@ def CalcMixSirms(single_sirms, mix, sirms_atom_counts, atom_labeling, min_num_at
                 for labeling in atom_labeling:
                     for p in product(*[select_sirms_by_labeling(d_tmp[mol_name].keys(), labeling) for mol_name in comb]):  # p - combination of sirms names from molecules
                         s = sum(sirms_atom_counts[item] for item in p)
-                        if min_num_atoms <= s <= max_num_atoms and min_num_components <= sum(item.count('.') + 1 for item in p) <= max_num_components:
+                        if min_num_atoms <= s <= max_num_atoms:
                             mix_sirs_name = gen_mix_sirms_name(p, ordered, ids)
-                            d_mix[mix_sirs_name] = d_mix.get(mix_sirs_name, 0) + mult(
-                                [d_tmp[mol_name].get(p[i], 0) for i, mol_name in enumerate(comb)])
+                            d_mix[mix_sirs_name] = d_mix.get(mix_sirs_name, 0) + mult([d_tmp[mol_name].get(p[i], 0) for i, mol_name in enumerate(comb)])
 
         # add single sirms and filter them with given number of atoms
         sirms_names = set(list(chain.from_iterable(list(s.keys()) for s in single_sirms.values())))
@@ -434,9 +433,17 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
                                              max_num_atoms, min_num_components, max_num_components, opt_noH,
                                              opt_verbose, None, True)
 
-        sirms = CalcMixSirms(sirms, mix, atom_counts, opt_diff, min_num_atoms, max_num_atoms, min_num_mix_components,
-                             max_num_mix_components, min_num_components, max_num_components, opt_verbose,
-                             opt_mix_ordered, self_assembly_mix)
+        sirms = CalcMixSirms(single_sirms=sirms,
+                             mix=mix,
+                             sirms_atom_counts=atom_counts,
+                             atom_labeling=opt_diff,
+                             min_num_atoms=min_num_atoms,
+                             max_num_atoms=max_num_atoms,
+                             min_num_mix_components=min_num_mix_components,
+                             max_num_mix_components=max_num_mix_components,
+                             verbose=opt_verbose,
+                             ordered=opt_mix_ordered,
+                             self_assembly_mix=self_assembly_mix)
 
         # filter single sirms with number of atoms lower than min_num_atoms
 
@@ -474,7 +481,7 @@ def main():
                         help='The maximal number of atoms in the fragment. Default value = 4')
     parser.add_argument('--min_num_components', metavar='', default=1,
                         help='The minimal number of disconnected groups of atoms in the fragment. '
-                             'Default value = 1 (mean fully connected fragments)')
+                             'Default value = 1 (mean fully connected fragments).')
     parser.add_argument('--max_num_components', metavar='', default=2,
                         help='The maximal number of disconnected groups of atoms in the fragment. '
                              'Default value = 2.')
@@ -542,12 +549,12 @@ def main():
         if o == "quasi_mix": quasimix = v
         if o == "id_field_name": id_field_name = v
         if o == "output_format": output_format = v
-        if o == "min_num_atoms": min_num_atoms = v
-        if o == "max_num_atoms": max_num_atoms = v
-        if o == "min_num_components": min_num_components = v
-        if o == "max_num_components": max_num_components = v
-        if o == "min_num_mix_components": min_num_mix_components = v
-        if o == "max_num_mix_components": max_num_mix_components = v
+        if o == "min_num_atoms": min_num_atoms = int(v)
+        if o == "max_num_atoms": max_num_atoms = int(v)
+        if o == "min_num_components": min_num_components = int(v)
+        if o == "max_num_components": max_num_components = int(v)
+        if o == "min_num_mix_components": min_num_mix_components = int(v)
+        if o == "max_num_mix_components": max_num_mix_components = int(v)
         if o == "self_assembly_mix": self_assembly_mix = v
         if o == "descriptors_transformation": descriptors_transformation = v
         if o == "mix_type": mix_type = v
@@ -581,10 +588,28 @@ def main():
         print("INPUT ERROR: type of mixture descriptors (types_mix_descriptors) can be only num, prob or both.")
         exit()
 
-    main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
-                max_num_components, min_num_mix_components, max_num_mix_components, mix_fname,
-                descriptors_transformation, mix_type, opt_mix_ordered, opt_ncores, opt_verbose, opt_noH,
-                frag_fname, parse_stereo, self_assembly_mix, quasimix, id_field_name, output_format)
+    main_params(in_fname=in_fname,
+                out_fname=out_fname,
+                opt_diff=opt_diff,
+                min_num_atoms=min_num_atoms,
+                max_num_atoms=max_num_atoms,
+                min_num_components=min_num_components,
+                max_num_components=max_num_components,
+                min_num_mix_components=min_num_mix_components,
+                max_num_mix_components=max_num_mix_components,
+                mix_fname=mix_fname,
+                descriptors_transformation=descriptors_transformation,
+                mix_type=mix_type,
+                opt_mix_ordered=opt_mix_ordered,
+                opt_ncores=opt_ncores,
+                opt_verbose=opt_verbose,
+                opt_noH=opt_noH,
+                frag_fname=frag_fname,
+                parse_stereo=parse_stereo,
+                self_assembly_mix=self_assembly_mix,
+                quasimix=quasimix,
+                id_field_name=id_field_name,
+                output_format=output_format)
 
 
 if __name__ == '__main__':
