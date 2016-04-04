@@ -10,6 +10,7 @@
 #-------------------------------------------------------------------------------
 
 from itertools import combinations
+from collections import Counter
 import copy
 
 
@@ -184,11 +185,6 @@ class SmilesMol3(Mol4):
         strace = set(trace)
         iterlist = set(self.bonds[inter].keys()).intersection(self.sub).difference(trace[-2:])
 
-        # solution for unbounded fragments
-        # if not iterlist and strace != self.sub:
-        #     remained = {k: self.levels[k] for k in self.sub.difference(strace)}
-        #     iterlist = {min(remained, key=remained.get)}
-
         # get atom label
         smi = [labels_dict[inter]]
 
@@ -220,7 +216,7 @@ class SmilesMol3(Mol4):
 
         return strace, ''.join(smi), concat
 
-    def __getMorgan(self, sub, labels):
+    def __getWeininger(self, sub, labels):
         """
         modified morgan algorithm
         init with prime numbers as weights according to labels
@@ -228,37 +224,59 @@ class SmilesMol3(Mol4):
         return: dict with atoms hash
         """
         a = sorted(set(labels))
-        newweights = {x: self.primes[a.index(labels[i])] for i, x in enumerate(sub)}
-        self.__buffer = 0
-        while self.__accept(newweights) and len(set(newweights.values())) < len(sub):
-            weights = copy.copy(newweights)
-            for i in sub:
-                l = sum([weights[x] * self.GetBondOrder(i, x) / 100 for x in self.bonds[i].keys() if x in sub])
-                newweights[i] += l
-        return newweights
+        init_weights = [a.index(lab) * 100000 for lab in labels]
+        for i, atom in enumerate(sub):
+            bond_orders = [self.GetBondOrder(atom, nei) for nei in self.bonds[atom].keys() if nei in sub]
+            c = Counter(bond_orders)
+            init_weights[i] = init_weights[i] + len(bond_orders) * 10000 + c[4] * 1000 + c[3] * 100 + c[2] * 10 + c[1]
+        # init_weights - label_rank, number_neighbours, number_bonds_1, number_bonds_2, number_bonds_3, number_bond_4 (aromatic)
+        a = sorted(set(init_weights))
+        ranks = [a.index(w) for w in init_weights]
 
-    def __accept(self, numb):
-        """
-        stop-function to interrupt Morgan algorithm
-        """
-        numl = len(set(numb.values()))
+        # -1 to be always TRUE on the first iteration
+        previous_ranks_len = len(set(ranks)) - 1
 
-        if self.__buffer >= numl:
-            return False
-        self.__buffer = numl
-        return True
+        while len(set(ranks)) < len(ranks) and previous_ranks_len < len(set(ranks)):
 
-    # def __getWeininger(self, sub, labels):
-    #     num = 0
-    #     a = sorted(set(labels))
-    #     newweights = ((x, a.index(labels[i]) * 100 + len(self.bonds[x])) for i, x in enumerate(sub))
-    #     while len(set(newweights)) < len(sub):
-    #
-    #         newweights = {x: self.primes[a.index(labels[i])] for i, x in enumerate(sub)}
-    #
-    #         num = set()
-    #
-    #     pass
+            previous_ranks_len = len(set(ranks))
+
+            primes = [self.primes[r] for r in ranks]
+
+            primes_product = []
+            for atom in sub:
+                p = 1
+                for nei in self.bonds[atom].keys():
+                    try:
+                        if nei in sub:
+                            p *= primes[sub.index(nei)]
+                    except ValueError:
+                        continue
+                primes_product.append(p)
+
+            # re-rank
+            new_ranks = [None] * len(sub)
+            # d = defaultdict(list)
+            d = dict()
+            for i, r in enumerate(ranks):
+                if r not in d.keys():
+                    d[r] = []
+                d[r].append(i)
+            curr_rank = 0
+            for i in sorted(d.keys()):
+                if len(d[i]) == 1:
+                    new_ranks[d[i][0]] = curr_rank
+                    curr_rank += 1
+                else:
+                    pp = [primes_product[j] for j in d[i]]
+                    a = sorted(set(pp))
+                    local_ranks = [a.index(p) for p in pp]
+                    for loc_r, j in zip(local_ranks, d[i]):
+                        new_ranks[j] = curr_rank + loc_r
+                    curr_rank += len(a)
+
+            ranks = list(new_ranks)
+
+        return {atom: rank for atom, rank in zip(sub, ranks)}
 
     def get_name(self, sub, labels):
 
@@ -269,7 +287,7 @@ class SmilesMol3(Mol4):
 
         self.nextnumb = self.__numb()
         self.sub = set(sub)
-        self.levels = self.__getMorgan(sub, labels)
+        self.levels = self.__getWeininger(sub, labels)
         inter = min(self.levels, key=self.levels.get)
 
         res = [self.__getSmiles([inter], inter, dict(zip(sub, labels)))]
@@ -280,12 +298,10 @@ class SmilesMol3(Mol4):
             res.append(self.__getSmiles([inter], inter, dict(zip(sub, labels))))
             visited = visited.union(res[-1][0])
 
-        # if {10, 11, 12}.issubset(sub):
-        #     # if 'H' in labels:
-        #     if set(sub).intersection([24, 20]):
-        #         print(sub, '.'.join([i[1] for i in res]))
+        # to get canonical multi-component SMILES
+        res = sorted([r[1] for r in res])
 
-        return '.'.join([i[1] for i in res])
+        return '.'.join(res)
 
     def __numb(self):
         i = 1
