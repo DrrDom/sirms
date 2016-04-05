@@ -297,9 +297,9 @@ def CalcMixSirms(single_sirms, mix, sirms_atom_counts, atom_labeling, min_num_at
         # get atomic property of descriptors (they all must have the same)
         return sirms_gen_full_name(prod_react='', single_mix='M', num_prob='num', labeling=sirms_get_labeling(sirms_names[0]), smiles='.'.join(tmp))
 
-    def select_sirms_by_labeling(sirms_names, labeling_name):
+    def select_sirms_by_labeling_one_component(sirms_names, labeling_name):
         substr = '|' + labeling_name + '|'
-        return [item for item in sirms_names if item.find(substr) > -1]
+        return [item for item in sirms_names if item.find(substr) > -1 and item.split('|')[-1].find('.') == -1]
 
     if verbose:
         print(' Mixtures calculation '.center(79, '='))
@@ -329,7 +329,7 @@ def CalcMixSirms(single_sirms, mix, sirms_atom_counts, atom_labeling, min_num_at
             for ids in iterator(range(len(mix_data['names'])), n):   # ids - mol id in mixture
                 comb = [mix_data['names'][i] for i in ids]
                 for labeling in atom_labeling:
-                    for p in product(*[select_sirms_by_labeling(d_tmp[mol_name].keys(), labeling) for mol_name in comb]):  # p - combination of sirms names from molecules
+                    for p in product(*[select_sirms_by_labeling_one_component(d_tmp[mol_name].keys(), labeling) for mol_name in comb]):  # p - combination of sirms names from molecules
                         s = sum(sirms_atom_counts[item] for item in p)
                         if min_num_atoms <= s <= max_num_atoms:
                             mix_sirs_name = gen_mix_sirms_name(p, ordered, ids)
