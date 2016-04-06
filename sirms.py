@@ -475,14 +475,14 @@ def main():
                              'value identical to the name of SDF field, which contains calculated atomic properties. '
                              'Fields names are case-sensitive. For RDF/RXN input files only built-in types can be used. '
                              'Default value = elm')
-    parser.add_argument('--min_num_atoms', metavar='', default=4,
+    parser.add_argument('--min_atoms', metavar='', default=4,
                         help='The minimal number of atoms in the fragment. Default value = 4')
-    parser.add_argument('--max_num_atoms', metavar='', default=4,
+    parser.add_argument('--max_atoms', metavar='', default=4,
                         help='The maximal number of atoms in the fragment. Default value = 4')
-    parser.add_argument('--min_num_components', metavar='', default=1,
+    parser.add_argument('--min_components', metavar='', default=1,
                         help='The minimal number of disconnected groups of atoms in the fragment. '
                              'Default value = 1 (mean fully connected fragments).')
-    parser.add_argument('--max_num_components', metavar='', default=2,
+    parser.add_argument('--max_components', metavar='', default=2,
                         help='The maximal number of disconnected groups of atoms in the fragment. '
                              'Default value = 2.')
     parser.add_argument('-s', '--stereo', action='store_true', default=False,
@@ -494,10 +494,10 @@ def main():
                         help='text file containing list of mixtures of components and their ratios. Names of components'
                              ' should be the same as in input.sdf file. The header should contain the string '
                              '"!absolute ratio" or "!relative ratio". Works only with sdf files.')
-    parser.add_argument('--min_num_mix_components', metavar='', default=2,
+    parser.add_argument('--min_mix_components', metavar='', default=2,
                         help='The minimal number of molecules which contribute to mixture fragments. '
                              'Default value = 2 (and cannot be less)')
-    parser.add_argument('--max_num_mix_components', metavar='', default=2,
+    parser.add_argument('--max_mix_components', metavar='', default=2,
                         help='The maximal number of molecules which contribute to mixture fragments. '
                              'Default value = 2 (take into account only binary interactions)')
     parser.add_argument('--descriptors_transformation', metavar='num|prob|both', default='num',
@@ -527,7 +527,7 @@ def main():
                         help='if set this flag hydrogen atoms will be excluded from the simplexes calculation')
     parser.add_argument('-f', '--fragments', metavar='fragments.txt', default=None,
                         help='text file containing list of names of single compounds, fragment names and atom '
-                             'indexes of fragment in the structure of corresponding compound')
+                             'indexes of fragment to remove (all are tab-separated)')
     parser.add_argument('-w', '--id_field_name', metavar='field_name', default=None,
                         help='field name of unique ID for compounds (sdf) or reactions (rdf/rxn). '
                              'If omitted for sdf molecule titles will be used or auto-generated names; '
@@ -549,12 +549,12 @@ def main():
         if o == "quasi_mix": quasimix = v
         if o == "id_field_name": id_field_name = v
         if o == "output_format": output_format = v
-        if o == "min_num_atoms": min_num_atoms = int(v)
-        if o == "max_num_atoms": max_num_atoms = int(v)
-        if o == "min_num_components": min_num_components = int(v)
-        if o == "max_num_components": max_num_components = int(v)
-        if o == "min_num_mix_components": min_num_mix_components = int(v)
-        if o == "max_num_mix_components": max_num_mix_components = int(v)
+        if o == "min_atoms": min_num_atoms = int(v)
+        if o == "max_atoms": max_num_atoms = int(v)
+        if o == "min_components": min_num_components = int(v)
+        if o == "max_components": max_num_components = int(v)
+        if o == "min_mix_components": min_num_mix_components = int(v)
+        if o == "max_mix_components": max_num_mix_components = int(v)
         if o == "self_assembly_mix": self_assembly_mix = v
         if o == "descriptors_transformation": descriptors_transformation = v
         if o == "mix_type": mix_type = v
