@@ -352,7 +352,10 @@ def CalcMixSirms(single_sirms, mix, sirms_atom_counts, atom_labeling, min_num_at
 #===============================================================================
 
 def GenQuasiMix(mol_names):
-    return {n: {'names': [n, n], 'ratios': [0.5, 0.5]} for n in mol_names}
+    d = OrderedDict()
+    for n in mol_names:
+        d[n] = {'names': [n, n], 'ratios': [0.5, 0.5]}
+    return d
 
 
 #===============================================================================
