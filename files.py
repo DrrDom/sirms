@@ -32,7 +32,7 @@ def NotExistedPropertyFiles(opt_diff, input_fname):
 def ReadPropertyRange(file_setup_name, prop_name):
     try:
         f = open(file_setup_name)
-    except:
+    except FileNotFoundError:
         print('File setup.txt cannot be found in the folder containing input sdf file.')
         exit()
     res = None

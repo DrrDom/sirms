@@ -21,7 +21,7 @@ from itertools import combinations, chain, product
 from collections import OrderedDict
 
 from sdf import ReadSDF, ReadRDF, ReadRXN
-from labels import SetLabelsInternal
+from labels import SetLabelsInternal, builtin_types
 from ppgfunctions import *
 from canon import LoadSirmsDict, GetCanonNameByDict, GenCanonName, GetSirmsType2, GetSirmsType
 from multiprocessing import Pool, cpu_count
@@ -453,7 +453,7 @@ def main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname
         sirms_dict = LoadSirmsDict()
 
     # define which property will be loaded from external file or from sdf-file
-    opt_diff_builtin = [v for v in opt_diff if v in ['elm', 'none']]
+    opt_diff_builtin = [v for v in opt_diff if v in builtin_types]
     opt_diff_sdf = files.NotExistedPropertyFiles([v for v in opt_diff if v not in opt_diff_builtin], in_fname)
     opt_diff_ext = [el for el in opt_diff if el not in opt_diff_sdf and el not in opt_diff_builtin]
 
@@ -473,7 +473,7 @@ def main_params(in_fname, out_fname, opt_no_dict, opt_diff, opt_types, mix_fname
     # set property labels on atoms from external data files
     SetLabelsExternal(mols, opt_diff_ext, in_fname)
     # set labels of built-in types
-    SetLabelsInternal(mols, opt_diff_builtin)
+    SetLabelsInternal(mols, opt_diff_builtin, setup_path)
 
     if mix_fname is None and not quasimix and input_file_extension == 'sdf':
 
@@ -527,8 +527,8 @@ def main():
                              'any bond types, while the other approach (which uses dictionary) can handle structures '
                              'containing only 0-4 bond types')
     parser.add_argument('-d', '--diff', metavar='', default=['elm'], nargs='*',
-                        help='list of atom labeling schemes separated by space. Built-in scheme is element (elm) and '
-                             'topology (none). '
+                        help='list of atom labeling schemes separated by space. Built-in schemes: element (elm), '
+                             'topology (none) and universal force-field distance and energy (uffd, uffe). '
                              'To include other schemes user should specify the name of the corresponding property '
                              'value identical to the name of SDF field, which contains calculated atomic properties. '
                              'Fields names are case-sensitive. For RDF/RXN input files only built-in types can be used. '
