@@ -368,9 +368,9 @@ def CalcProbSirms(sirms, type):
             s_single = sum(v for k, v in sirms[mol_name].items() if sirms_get_mix_single(k) == 'S')
             for k, v in sirms[mol_name].items():
                 if sirms_get_mix_single(k) == 'M':
-                    d[sirms_invert_num_prob_type(k)] = v/s_mix
+                    d[sirms_invert_num_prob_type(k)] = v/s_mix if s_mix != 0 else 0
                 else:
-                    d[sirms_invert_num_prob_type(k)] = v/s_single
+                    d[sirms_invert_num_prob_type(k)] = v/s_single if s_single != 0 else 0
             if type == 'both':
                 sirms[mol_name].update(d)
             elif type == 'prob':
