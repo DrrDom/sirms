@@ -406,7 +406,7 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
         frags = files.LoadFragments(frag_fname)
         # calc simplex descriptors
         sirms = CalcSingleSirms(mols.values(), opt_diff, min_num_atoms, max_num_atoms, min_num_components,
-                                max_num_components, opt_noH, opt_verbose, frags, False)
+                                max_num_components, opt_noH, opt_verbose, frags)
 
     else:
 
