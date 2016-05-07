@@ -37,6 +37,10 @@ def sirms_get_smile(sirms_string):
     return sirms_string.rsplit('|', 1)[1]
 
 
+def sirms_get_atomcount(sirms_string):
+    return int(sirms_string.split('|')[-3])
+
+
 def sirms_get_labeling(sirms_string):
     return sirms_string.rsplit('|', 2)[1]
 
@@ -61,8 +65,8 @@ def sirms_insert_reaction_info(sirms_string, prod_react):
     return prod_react + '|' + sirms_string.split('|', 1)[1]
 
 
-def sirms_gen_full_name(prod_react, single_mix, num_prob, labeling, smiles):
-    return prod_react + '|' + single_mix + '|' + num_prob + '|' + '|' + '|' + labeling + '|' + smiles
+def sirms_gen_full_name(prod_react, single_mix, num_prob, atom_count, labeling, smiles):
+    return prod_react + '|' + single_mix + '|' + num_prob + '|' + '|' + str(atom_count) + '|' + labeling + '|' + smiles
 
 
 #===============================================================================
@@ -179,7 +183,7 @@ def SetLabelsExternal(mols, opt_diff, input_fname):
 
 
 def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_components,
-                       max_num_components, noH, verbose, frags=None, for_mix=False):
+                       max_num_components, noH, verbose, frags=None):
     """
     INPUT:
         mol: Mol3 object;
@@ -209,17 +213,14 @@ def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_com
     else:
         local_frags = None
 
-    if for_mix:
-        atom_count = dict()
-
     for a in mol.GetAtomsCombinations(min_num_components=min_num_components, max_num_components=max_num_components,
                                       min_num_atoms=min_num_atoms, max_num_atoms=max_num_atoms, noH=noH):
 
         for s_diff in diff_list:
             labels = [mol.atoms[a_id]['property'][s_diff]['label'] for a_id in a]
             for labels_set in product(*labels):
-                sirms_name = sirms_gen_full_name(prod_react='', single_mix='S', num_prob='num', labeling=s_diff,
-                                                 smiles=mol.get_name(a, labels_set))
+                sirms_name = sirms_gen_full_name(prod_react='', single_mix='S', num_prob='num', atom_count=len(a),
+                                                 labeling=s_diff, smiles=mol.get_name(a, labels_set))
                 # sirms_name = 'S|' + s_diff + '|' + mol.get_name(a, labels_set)
                 d[mol.title][sirms_name] = d[mol.title].get(sirms_name, 0) + 1
                 if local_frags is not None:
@@ -227,8 +228,6 @@ def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_com
                     for frag in local_frags.keys():
                         if set(a).isdisjoint(local_frags[frag]):
                             d[frag][sirms_name] = d[frag].get(sirms_name, 0) + 1
-                if for_mix:
-                    atom_count[sirms_name] = len(a)
 
     # rename frags in output dict
     output = {}
@@ -242,40 +241,29 @@ def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_com
     if verbose:
         print(mol.title, (str(round(time.time() - cur_time, 1)) + ' s').rjust(78 - len(mol.title)))
 
-    if for_mix:
-        return output, atom_count
-    else:
-        return output
+    return output
 
 
 #===============================================================================
 
 def CalcSingleSirms(mol_list, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
-                    max_num_components, opt_noH, opt_verbose, frags, for_mix):
+                    max_num_components, opt_noH, opt_verbose, frags):
 
     if opt_verbose:
         print(' Single compounds calculation '.center(79, '='))
 
     sirms = OrderedDict()
-    atom_counts = dict()
     for mol in mol_list:
         res = CalcMolSingleSirms(mol, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
-                                 max_num_components, opt_noH, opt_verbose, frags, for_mix)
-        if for_mix:
-            sirms.update(res[0])
-            atom_counts.update(res[1])
-        else:
-            sirms.update(res)
+                                 max_num_components, opt_noH, opt_verbose, frags)
+        sirms.update(res)
 
-    if for_mix:
-        return sirms, atom_counts
-    else:
-        return sirms
+    return sirms
 
 
 #===============================================================================
 
-def CalcMixSirms(single_sirms, mix, sirms_atom_counts, atom_labeling, min_num_atoms=4, max_num_atoms=4,
+def CalcMixSirms(single_sirms, mix, atom_labeling, min_num_atoms=4, max_num_atoms=4,
                  min_num_mix_components=2, max_num_mix_components=2, verbose=False, ordered=False,
                  self_assembly_mix=False):
 
@@ -294,8 +282,11 @@ def CalcMixSirms(single_sirms, mix, sirms_atom_counts, atom_labeling, min_num_at
         else:
             # add component id before smile
             tmp = sorted([str(id + 1) + '_' + sirms_get_smile(item) for id, item in zip(ids, sirms_names)])
+        # get atom count
+        atom_count = sum(sirms_get_atomcount(item) for item in sirms_names)
         # get atomic property of descriptors (they all must have the same)
-        return sirms_gen_full_name(prod_react='', single_mix='M', num_prob='num', labeling=sirms_get_labeling(sirms_names[0]), smiles='.'.join(tmp))
+        return sirms_gen_full_name(prod_react='', single_mix='M', num_prob='num', atom_count=atom_count,
+                                   labeling=sirms_get_labeling(sirms_names[0]), smiles='.'.join(tmp))
 
     def select_sirms_by_labeling_one_component(sirms_names, labeling_name):
         substr = '|' + labeling_name + '|'
@@ -330,7 +321,7 @@ def CalcMixSirms(single_sirms, mix, sirms_atom_counts, atom_labeling, min_num_at
                 comb = [mix_data['names'][i] for i in ids]
                 for labeling in atom_labeling:
                     for p in product(*[select_sirms_by_labeling_one_component(d_tmp[mol_name].keys(), labeling) for mol_name in comb]):  # p - combination of sirms names from molecules
-                        s = sum(sirms_atom_counts[item] for item in p)
+                        s = sum(sirms_get_atomcount(item) for item in p)
                         if min_num_atoms <= s <= max_num_atoms:
                             mix_sirs_name = gen_mix_sirms_name(p, ordered, ids)
                             d_mix[mix_sirs_name] = d_mix.get(mix_sirs_name, 0) + mult([d_tmp[mol_name].get(p[i], 0) for i, mol_name in enumerate(comb)])
@@ -338,7 +329,7 @@ def CalcMixSirms(single_sirms, mix, sirms_atom_counts, atom_labeling, min_num_at
         # add single sirms and filter them with given number of atoms
         sirms_names = set(list(chain.from_iterable(list(s.keys()) for s in single_sirms.values())))
         for name in sirms_names:
-            if min_num_atoms <= sirms_atom_counts[name] <= max_num_atoms:
+            if min_num_atoms <= sirms_get_atomcount(name) <= max_num_atoms:
                 d_mix[name] = sum(single_sirms[mol_name].get(name, 0) for mol_name in mix_data['names'])
 
         d[mix_name] = d_mix
@@ -432,13 +423,12 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
         mols_used = set(chain.from_iterable([m['names'] for m in mix.values()]))
 
         # min_num_atoms set to 1 to be able to generate mixtures
-        sirms, atom_counts = CalcSingleSirms([mols[mol_name] for mol_name in mols_used], opt_diff, 1,
-                                             max_num_atoms, min_num_components, max_num_components, opt_noH,
-                                             opt_verbose, None, True)
+        sirms = CalcSingleSirms([mols[mol_name] for mol_name in mols_used], opt_diff, 1,
+                                max_num_atoms, min_num_components, max_num_components, opt_noH,
+                                opt_verbose, None)
 
         sirms = CalcMixSirms(single_sirms=sirms,
                              mix=mix,
-                             sirms_atom_counts=atom_counts,
                              atom_labeling=opt_diff,
                              min_num_atoms=min_num_atoms,
                              max_num_atoms=max_num_atoms,
