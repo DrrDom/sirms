@@ -390,10 +390,10 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
     elif input_file_extension == 'rdf':
         mols, mix = ReadRDF(in_fname, id_field_name)
     elif input_file_extension == 'rxn':
-        mols, mix = ReadRXN(in_fname, id_field_name)
+        mols, mix = ReadRXN(in_fname, id_field_name, opt_diff_sdf, setup_path)
     else:
-        print(
-            "Input file extension should be SDF, RDF or RXN. Current file has %s. Please check it." % input_file_extension.upper())
+        print("Input file extension should be SDF, RDF or RXN. Current file has %s. Please check it." %
+              input_file_extension.upper())
         return None
 
     # set property labels on atoms from external data files

@@ -72,13 +72,13 @@ def add_property_to_atoms(mol, data_dict, fsetup):
                                                    'label': label_full}
 
 
-def get_sdf_field(sdf_lines, property_name):
+def get_sdf_field(sdf_lines, field_name):
 
     # case-sensitive field name search
 
     i = 0
 
-    field_strings = ['>  <' + property_name + '>', '> <' + property_name + '>']
+    field_strings = ['>  <' + field_name + '>', '> <' + field_name + '>']
 
     # find field
     for i, line in enumerate(sdf_lines):
@@ -86,14 +86,14 @@ def get_sdf_field(sdf_lines, property_name):
             break
 
     if i == len(sdf_lines) - 1:
-        print('Field %s was not found in the input file.' % property_name)
+        print('Field %s was not found in the input file.' % field_name)
         return None
 
     # retrieve data if field was found
     i += 1
     data = []
     while i < len(sdf_lines):
-        if sdf_lines[i].find('>  <') == 0 or sdf_lines[i].find('> <') == 0:
+        if sdf_lines[i].find('>  <') == 0 or sdf_lines[i].find('> <') == 0 or sdf_lines[i].rstrip() == '$$$$':
             break
         if sdf_lines[i]:
             data.append(sdf_lines[i])
@@ -171,8 +171,6 @@ def ReadSDF(fname, id_field_name, opt_diff, fsetup, parse_stereo):
 
 
 def get_rdf_field(rxn, field_name):
-    # case-insensitive field names
-    field_name = field_name.lower()
     i = 0
     while rxn[i].find("$DTYPE") != 0:
         i += 1
@@ -267,7 +265,7 @@ def process_rdf_reaction(rxn_lines, id_field_name, auto_name):
     return mols, mix
 
 
-def process_rxn_reaction(rxn_lines, id_field_name, auto_name):
+def process_rxn_reaction(rxn_lines, id_field_name, auto_name, opt_diff, fsetup):
 
     mols, n_reactants, n_products = parse_rxn_mols(rxn_lines)
 
@@ -277,6 +275,25 @@ def process_rxn_reaction(rxn_lines, id_field_name, auto_name):
         if data is not None and len(data) == 1:
             rx_id = data[0]
 
+    # read properties from sdf fields
+    data_dict = dict()
+    for diff in opt_diff:
+        data = get_sdf_field(rxn_lines, diff)
+        if data is not None and len(data) == 1:
+            s = data[0].split(';')
+            try:
+                data_dict[diff] = [float(el.replace(",", ".")) if el != "" else None for el in s]
+            except ValueError:
+                data_dict[diff] = [el if el != "" else None for el in s]
+
+    # add labels
+    start = 0
+    for mol in mols:
+        end = start + len(mol.atoms)
+        data = {k: v[start:end] for k, v in data_dict.items()}
+        add_property_to_atoms(mol, data, fsetup)
+        start = end
+
     set_mol_titles(mols, rx_id, n_reactants, n_products)
     mix = create_rx_mix(mols, rx_id, n_reactants, n_products)
 
@@ -284,7 +301,7 @@ def process_rxn_reaction(rxn_lines, id_field_name, auto_name):
 
 
 def ReadRDF(fname, id_field_name):
-    # reaction ID will be looked for in
+    # reaction ID will be searched in
     # 1) named field if specified (not None)
     # 2) $RFMT $RIREG id / $RFMT $REREG id if present
     # 3) generated automatically
@@ -321,7 +338,7 @@ def ReadRDF(fname, id_field_name):
     return mols, mix
 
 
-def ReadRXN(fname, id_field_name):
+def ReadRXN(fname, id_field_name, opt_diff, fsetup):
 
     mols = OrderedDict()
     mix = OrderedDict()
@@ -334,7 +351,7 @@ def ReadRXN(fname, id_field_name):
         for line in f:
             if line.find("$RXN") == 0:
                 if rxn:
-                    rx_mols, rx_mix = process_rxn_reaction(rxn, id_field_name, 'rx_autogen_id_' + str(i))
+                    rx_mols, rx_mix = process_rxn_reaction(rxn, id_field_name, 'rx_autogen_id_' + str(i), opt_diff, fsetup)
                     for mol in rx_mols:
                         mols[mol.title] = mol
                     mix.update(rx_mix)
@@ -343,7 +360,7 @@ def ReadRXN(fname, id_field_name):
             else:
                 rxn.append(line.rstrip())
 
-        rx_mols, rx_mix = process_rxn_reaction(rxn, id_field_name, 'rx_autogen_id_' + str(i))
+        rx_mols, rx_mix = process_rxn_reaction(rxn, id_field_name, 'rx_autogen_id_' + str(i), opt_diff, fsetup)
         for mol in rx_mols:
             mols[mol.title] = mol
         mix.update(rx_mix)
