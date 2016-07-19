@@ -227,12 +227,13 @@ def process_rdf_reaction(rxn_lines, id_field_name, auto_name):
     mols, n_reactants, n_products = parse_rxn_mols(rxn_lines[1:])
 
     # get reaction id
+    rx_id = None
     if id_field_name is not None:
         rx_id = get_rdf_field(rxn_lines, id_field_name)
-    else:
+    if rx_id is None:
         # from $RFMT $RIREG NUMBER
         tmp = rxn_lines[0].split()
-        if len(tmp) == 3 and tmp[1] in ['$RIREG', 'REREG']:
+        if len(tmp) == 3 and tmp[1] in ['$RIREG', '$REREG', '$MIREG', '$MEREG']:
                 rx_id = tmp[2]
         else:
             rx_id = auto_name

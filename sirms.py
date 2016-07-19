@@ -514,7 +514,7 @@ def main():
     parser.add_argument('-w', '--id_field_name', metavar='field_name', default=None,
                         help='field name of unique ID for compounds (sdf) or reactions (rdf/rxn). '
                              'If omitted for sdf molecule titles will be used or auto-generated names; '
-                             'for rdf $RIREG/$REREG field if it is not empty or auto-generated names')
+                             'for rdf $RIREG/$REREG/$MIREG/$MEREG field if it is not empty or auto-generated names')
 
     args = vars(parser.parse_args())
     opt_mix_ordered = None
