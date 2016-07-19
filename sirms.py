@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 #-------------------------------------------------------------------------------
 # Name:        sirms.py --in mols.sdf --out descriptors.txt
 #              sirms.py -h for help
@@ -12,7 +13,6 @@
 # Licence:     GPLv3
 # Python Version: 3.2
 #-------------------------------------------------------------------------------
-#!/usr/bin/env python
 
 import argparse
 import time
