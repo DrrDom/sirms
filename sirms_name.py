@@ -7,7 +7,7 @@ def get_smile(sirms_string):
 
 
 def get_atomcount(sirms_string):
-    return int(sirms_string.split('|', 6)[4])
+    return int(sirms_string.split('|', 6)[5])
 
 
 def get_atom_labeling(sirms_string):
@@ -34,8 +34,16 @@ def insert_reaction_info(sirms_string, prod_react):
     return prod_react + '|' + sirms_string.split('|', 1)[1]
 
 
+def split_by_reaction_part(sirms_name):
+    return sirms_name.split('|', 1)
+
+
+def join_reaction_part(react_part, common_part):
+    return react_part + '|' + common_part
+
+
 def create_full_name(prod_react, single_mix, num_prob, atom_count, atom_labeling, smiles):
     return prod_react + '|' + single_mix + '|' + num_prob + '|||' + str(atom_count) + '|||' + \
-           '|' + atom_labeling + '|' + smiles
+           atom_labeling + '|' + smiles
 
 

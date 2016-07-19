@@ -313,6 +313,34 @@ def GenQuasiMix(mol_names):
 
 #===============================================================================
 
+def CalcReactionDiffSirms(sirms):
+
+    def calc_diff(d):
+        output = dict()
+        checked_names = set()
+        for name, value in d.items():
+            r, common_part = sirms_name.split_by_reaction_part(name)
+            if common_part not in checked_names:
+                checked_names.add(common_part)
+                if r == 'p':
+                    res = d[name] - d.get(sirms_name.join_reaction_part('r', common_part), 0)
+                elif r == 'r':
+                    res = d.get(sirms_name.join_reaction_part('p', common_part), 0) - d[name]
+                else:
+                    print("Incorrect reaction_part label %s, can be only r, p or pr." % r)
+                    continue
+                if res != 0:
+                    output[sirms_name.join_reaction_part('pr', common_part)] = res
+        return output
+
+
+    for mol_name, data in sirms.items():
+        sirms[mol_name] = calc_diff(sirms[mol_name])
+    return sirms
+
+
+#===============================================================================
+
 def CalcProbSirms(sirms, type):
     if type in ['prob', 'both']:
         for mol_name in sirms.keys():
@@ -337,7 +365,7 @@ def CalcProbSirms(sirms, type):
 def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
                 max_num_components, min_num_mix_components, max_num_mix_components, mix_fname,
                 descriptors_transformation, mix_type, opt_mix_ordered, opt_verbose, opt_noH,
-                frag_fname, self_association_mix, quasimix, id_field_name, output_format):
+                frag_fname, self_association_mix, reaction_diff, quasimix, id_field_name, output_format):
 
     # define which property will be loaded from external file or from sdf-file
     opt_diff_builtin = [v for v in opt_diff if v in builtin_types]
@@ -408,6 +436,9 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
     if descriptors_transformation in ['prob', 'both']:
         sirms = CalcProbSirms(sirms, descriptors_transformation)
 
+    if reaction_diff:
+        sirms = CalcReactionDiffSirms(sirms)
+
     SaveSimplexes(out_fname, sirms, output_format)
 
 
@@ -470,6 +501,9 @@ def main():
     parser.add_argument('--mix_self_association', action='store_true', default=False,
                         help='calculates mixture descriptors between components with themselves in order to take into '
                              'account self-interaction of components. Default: false.')
+    parser.add_argument('--reaction_diff', action='store_true', default=False,
+                        help='if set this flag difference between product and reactant descriptors will be calculated. '
+                             'By default these two feature vectors are concatenated.')
     parser.add_argument('-v', '--verbose', action='store_true', default=False,
                         help='if set this flag progress will be printed out (may cause decrease in speed).')
     parser.add_argument('-x', '--noH', action='store_true', default=False,
@@ -506,6 +540,7 @@ def main():
         if o == "mix_self_association": self_association_mix = v
         if o == "descriptors_transformation": descriptors_transformation = v
         if o == "mix_type": mix_type = v
+        if o == "reaction_diff": reaction_diff = v
     if quasimix:
         opt_mix_ordered = False
         mix_fname = None
@@ -535,6 +570,9 @@ def main():
     if descriptors_transformation not in ['num', 'prob', 'both']:
         print("INPUT ERROR: type of mixture descriptors (types_mix_descriptors) can be only num, prob or both.")
         exit()
+    if in_fname.split('.')[-1] not in ['rdf', 'rxn'] and reaction_diff:
+        print("The option reaction diff can be used only with RDF or RXN input files.")
+        exit()
 
     main_params(in_fname=in_fname,
                 out_fname=out_fname,
@@ -553,6 +591,7 @@ def main():
                 opt_noH=opt_noH,
                 frag_fname=frag_fname,
                 self_association_mix=self_association_mix,
+                reaction_diff=reaction_diff,
                 quasimix=quasimix,
                 id_field_name=id_field_name,
                 output_format=output_format)
