@@ -24,48 +24,9 @@ from collections import OrderedDict
 from sdf import ReadSDF, ReadRDF, ReadRXN
 from labels import SetLabelsInternal, builtin_types
 from ppgfunctions import *
-
+import sirms_name
 
 mol_frag_sep = "###"
-
-
-#===============================================================================
-# Basic functions to work with descriptors names
-
-def sirms_get_smile(sirms_string):
-    return sirms_string.rsplit('|', 1)[1]
-
-
-def sirms_get_atomcount(sirms_string):
-    return int(sirms_string.split('|')[-3])
-
-
-def sirms_get_labeling(sirms_string):
-    return sirms_string.rsplit('|', 2)[1]
-
-
-def sirms_get_mix_single(sirms_string):
-    return sirms_string.split('|', 2)[1]
-
-
-def sirms_invert_num_prob_type(sirms_string):
-    tmp = sirms_string.split('|')
-    if tmp[2] == 'num':
-        tmp[2] = 'prob'
-    else:
-        tmp[2] = 'num'
-    return '|'.join(tmp)
-
-
-def sirms_insert_reaction_info(sirms_string, prod_react):
-    """
-    prod_react: p or r
-    """
-    return prod_react + '|' + sirms_string.split('|', 1)[1]
-
-
-def sirms_gen_full_name(prod_react, single_mix, num_prob, atom_count, labeling, smiles):
-    return prod_react + '|' + single_mix + '|' + num_prob + '|' + '|' + str(atom_count) + '|' + labeling + '|' + smiles
 
 
 #===============================================================================
@@ -150,16 +111,16 @@ def concat_reaction_sirms(sirms):
         k, v = sirms.popitem(last=False)
         rx_id, role = k.rsplit('_', 1)
         # first letter from role is used as additional description
-        new_sirms_names = [sirms_insert_reaction_info(s, role[0]) for s in sorted(v.keys())]
+        new_sirms_names = [sirms_name.insert_reaction_info(s, role[0]) for s in sorted(v.keys())]
         s1 = {new_sirms_names[i]: v[sname] for i, sname in enumerate(sorted(v.keys()))}
 
         # take complimentary element (reactants or products of the same reaction)
         if role == 'reactants':
             k = rx_id + '_products'
-            new_sirms_names = [sirms_insert_reaction_info(s, 'p') for s in sorted(sirms[k].keys())]
+            new_sirms_names = [sirms_name.insert_reaction_info(s, 'p') for s in sorted(sirms[k].keys())]
         elif role == 'products':
             k = rx_id + '_reactants'
-            new_sirms_names = [sirms_insert_reaction_info(s, 'r') for s in sorted(sirms[k].keys())]
+            new_sirms_names = [sirms_name.insert_reaction_info(s, 'r') for s in sorted(sirms[k].keys())]
         else:
             print('Impossible error')
         v = sirms[k]
@@ -218,15 +179,16 @@ def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_com
         for s_diff in diff_list:
             labels = [mol.atoms[a_id]['property'][s_diff]['label'] for a_id in a]
             for labels_set in product(*labels):
-                sirms_name = sirms_gen_full_name(prod_react='', single_mix='S', num_prob='num', atom_count=len(a),
-                                                 labeling=s_diff, smiles=mol.get_name(a, labels_set))
+                s_name = sirms_name.create_full_name(prod_react='', single_mix='S', num_prob='n',
+                                                     atom_count=len(a), atom_labeling=s_diff,
+                                                     smiles=mol.get_name(a, labels_set))
                 # sirms_name = 'S|' + s_diff + '|' + mol.get_name(a, labels_set)
-                d[mol.title][sirms_name] = d[mol.title].get(sirms_name, 0) + 1
+                d[mol.title][s_name] = d[mol.title].get(s_name, 0) + 1
                 if local_frags is not None:
                     # if there is no common atoms in simplex and fragment
                     for frag in local_frags.keys():
                         if set(a).isdisjoint(local_frags[frag]):
-                            d[frag][sirms_name] = d[frag].get(sirms_name, 0) + 1
+                            d[frag][s_name] = d[frag].get(s_name, 0) + 1
 
     # rename frags in output dict
     output = {}
@@ -274,18 +236,19 @@ def CalcMixSirms(single_sirms, mix, atom_labeling, min_num_atoms=4, max_num_atom
 
     def gen_mix_sirms_name(sirms_names, ordered, ids=None):
         if not ordered:
-            tmp = [sirms_get_smile(item) for item in sirms_names]
+            tmp = [sirms_name.get_smile(item) for item in sirms_names]
             tmp = [item.split('.') for item in tmp]
             # flatten list and sort to obtain canonical order
             tmp = sorted([item for sublist in tmp for item in sublist])
         else:
             # add component id before smile
-            tmp = sorted([str(id + 1) + '_' + sirms_get_smile(item) for id, item in zip(ids, sirms_names)])
+            tmp = sorted([str(id + 1) + '_' + sirms_name.get_smile(item) for id, item in zip(ids, sirms_names)])
         # get atom count
-        atom_count = sum(sirms_get_atomcount(item) for item in sirms_names)
+        atom_count = sum(sirms_name.get_atomcount(item) for item in sirms_names)
         # get atomic property of descriptors (they all must have the same)
-        return sirms_gen_full_name(prod_react='', single_mix='M', num_prob='num', atom_count=atom_count,
-                                   labeling=sirms_get_labeling(sirms_names[0]), smiles='.'.join(tmp))
+        return sirms_name.create_full_name(prod_react='', single_mix='M', num_prob='n', atom_count=atom_count,
+                                           atom_labeling=sirms_name.get_atom_labeling(sirms_names[0]),
+                                           smiles='.'.join(tmp))
 
     def select_sirms_by_labeling_one_component(sirms_names, labeling_name):
         substr = '|' + labeling_name + '|'
@@ -320,7 +283,7 @@ def CalcMixSirms(single_sirms, mix, atom_labeling, min_num_atoms=4, max_num_atom
                 comb = [mix_data['names'][i] for i in ids]
                 for labeling in atom_labeling:
                     for p in product(*[select_sirms_by_labeling_one_component(d_tmp[mol_name].keys(), labeling) for mol_name in comb]):  # p - combination of sirms names from molecules
-                        s = sum(sirms_get_atomcount(item) for item in p)
+                        s = sum(sirms_name.get_atomcount(item) for item in p)
                         if min_num_atoms <= s <= max_num_atoms:
                             mix_sirs_name = gen_mix_sirms_name(p, ordered, ids)
                             d_mix[mix_sirs_name] = d_mix.get(mix_sirs_name, 0) + mult([d_tmp[mol_name].get(p[i], 0) for i, mol_name in enumerate(comb)])
@@ -328,7 +291,7 @@ def CalcMixSirms(single_sirms, mix, atom_labeling, min_num_atoms=4, max_num_atom
         # add single sirms and filter them with given number of atoms
         sirms_names = set(list(chain.from_iterable(list(s.keys()) for s in single_sirms.values())))
         for name in sirms_names:
-            if min_num_atoms <= sirms_get_atomcount(name) <= max_num_atoms:
+            if min_num_atoms <= sirms_name.get_atomcount(name) <= max_num_atoms:
                 d_mix[name] = sum(single_sirms[mol_name].get(name, 0) for mol_name in mix_data['names'])
 
         d[mix_name] = d_mix
@@ -354,13 +317,13 @@ def CalcProbSirms(sirms, type):
     if type in ['prob', 'both']:
         for mol_name in sirms.keys():
             d = dict()
-            s_mix = sum(v for k, v in sirms[mol_name].items() if sirms_get_mix_single(k) == 'M')
-            s_single = sum(v for k, v in sirms[mol_name].items() if sirms_get_mix_single(k) == 'S')
+            s_mix = sum(v for k, v in sirms[mol_name].items() if sirms_name.get_mix_single(k) == 'M')
+            s_single = sum(v for k, v in sirms[mol_name].items() if sirms_name.get_mix_single(k) == 'S')
             for k, v in sirms[mol_name].items():
-                if sirms_get_mix_single(k) == 'M':
-                    d[sirms_invert_num_prob_type(k)] = v/s_mix if s_mix != 0 else 0
+                if sirms_name.get_mix_single(k) == 'M':
+                    d[sirms_name.invert_num_prob_type(k)] = v/s_mix if s_mix != 0 else 0
                 else:
-                    d[sirms_invert_num_prob_type(k)] = v/s_single if s_single != 0 else 0
+                    d[sirms_name.invert_num_prob_type(k)] = v/s_single if s_single != 0 else 0
             if type == 'both':
                 sirms[mol_name].update(d)
             elif type == 'prob':
@@ -374,7 +337,7 @@ def CalcProbSirms(sirms, type):
 def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
                 max_num_components, min_num_mix_components, max_num_mix_components, mix_fname,
                 descriptors_transformation, mix_type, opt_mix_ordered, opt_verbose, opt_noH,
-                frag_fname, parse_stereo, self_association_mix, quasimix, id_field_name, output_format):
+                frag_fname, self_association_mix, quasimix, id_field_name, output_format):
 
     # define which property will be loaded from external file or from sdf-file
     opt_diff_builtin = [v for v in opt_diff if v in builtin_types]
@@ -385,7 +348,7 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
     input_file_extension = in_fname.strip().split(".")[-1].lower()
     setup_path = os.path.join(GetWorkDir(in_fname), "setup.txt")
     if input_file_extension == 'sdf':
-        mols = ReadSDF(in_fname, id_field_name, opt_diff_sdf, setup_path, parse_stereo)
+        mols = ReadSDF(in_fname, id_field_name, opt_diff_sdf, setup_path)
     elif input_file_extension == 'rdf':
         mols, mix = ReadRDF(in_fname, id_field_name)
     elif input_file_extension == 'rxn':
@@ -589,7 +552,6 @@ def main():
                 opt_verbose=opt_verbose,
                 opt_noH=opt_noH,
                 frag_fname=frag_fname,
-                parse_stereo=parse_stereo,
                 self_association_mix=self_association_mix,
                 quasimix=quasimix,
                 id_field_name=id_field_name,

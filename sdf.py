@@ -102,7 +102,7 @@ def get_sdf_field(sdf_lines, field_name):
     return data
 
 
-def ReadSDF(fname, id_field_name, opt_diff, fsetup, parse_stereo):
+def ReadSDF(fname, id_field_name, opt_diff, fsetup, parse_stereo=False):
     """
     INPUT: sdf-filename
     OUTPUT: dict of molecules, where key is the title of the moleculae taken from the first line of mol-record
