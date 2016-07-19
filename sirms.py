@@ -452,8 +452,8 @@ def main():
                         help='output file with calculated descriptors. Can be in text or sparse svm format.')
     parser.add_argument('-b', '--output_format', metavar='format_name', default='txt',
                         help='format of output file with calculated descriptors (txt|svm). '
-                             'Txt is ordinary tab-separated text file. Svm is sparse format, two additional file will '
-                             'be saved with extensions .colnames amd .rownames. Default: txt.')
+                             'Txt is ordinary tab-separated text file. Svm is sparse format, two additional files will '
+                             'be saved with extensions .colnames and .rownames. Default: txt.')
     parser.add_argument('-a', '--atoms_labeling', metavar='', default=['elm'], nargs='*',
                         help='list of atom labeling schemes separated by space. Built-in scheme is element (elm) and '
                              'topology (none). '
