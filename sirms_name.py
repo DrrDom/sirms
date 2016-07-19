@@ -35,7 +35,7 @@ def insert_reaction_info(sirms_string, prod_react):
 
 
 def create_full_name(prod_react, single_mix, num_prob, atom_count, atom_labeling, smiles):
-    return prod_react + '|' + single_mix + '|' + num_prob + '||' + str(atom_count) + '||' + \
+    return prod_react + '|' + single_mix + '|' + num_prob + '|||' + str(atom_count) + '||' + \
            '|' + atom_labeling + '|' + smiles
 
 
