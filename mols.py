@@ -216,6 +216,28 @@ class SmilesMol3(Mol4):
 
         return strace, ''.join(smi), concat
 
+    def __get_feature_signatures(self, ids, labels):
+        feature_signatures = []
+        for num_i, i in enumerate(ids):
+            sign = []
+            for num_j, j in enumerate(ids):
+                if i != j:
+                    bond_order = self.GetBondOrder(ids[num_i], ids[num_j])
+                    if bond_order > 0:
+                        sign.append((labels[num_j], self.GetBondOrder(ids[num_i], ids[num_j])))
+            feature_signatures.append((labels[num_i],) + tuple(sorted(sign)))
+        return tuple(feature_signatures)
+
+    def __getRanks(self, sub, labels):
+        prev_len = 0
+        signatures = self.__get_feature_signatures(sub, labels)
+        while len(sub) > len(set(signatures)) > prev_len:
+            prev_len = len(set(signatures))
+            signatures = self.__get_feature_signatures(sub, signatures)
+        s = sorted(signatures)
+        return {atom: s.index(sign) for atom, sign in zip(sub, signatures)}
+
+
     def __getWeininger(self, sub, labels):
         """
         modified morgan algorithm
@@ -236,7 +258,7 @@ class SmilesMol3(Mol4):
         # -1 to be always TRUE on the first iteration
         previous_ranks_len = len(set(ranks)) - 1
 
-        while len(set(ranks)) < len(ranks) and previous_ranks_len < len(set(ranks)):
+        while len(ranks) > len(set(ranks)) > previous_ranks_len:
 
             previous_ranks_len = len(set(ranks))
 
@@ -287,7 +309,8 @@ class SmilesMol3(Mol4):
 
         self.nextnumb = self.__numb()
         self.sub = set(sub)
-        self.levels = self.__getWeininger(sub, labels)
+        # self.levels = self.__getWeininger(sub, labels)
+        self.levels = self.__getRanks(sub, labels)
         inter = min(self.levels, key=self.levels.get)
 
         res = [self.__getSmiles([inter], inter, dict(zip(sub, labels)))]
