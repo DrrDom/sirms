@@ -527,7 +527,6 @@ def main():
         if o == "verbose": opt_verbose = v
         if o == "noH": opt_noH = v
         if o == "fragments": frag_fname = v
-        if o == "stereo": parse_stereo = v
         if o == "quasi_mix": quasimix = v
         if o == "id_field_name": id_field_name = v
         if o == "output_format": output_format = v
@@ -548,7 +547,7 @@ def main():
         opt_mix_ordered = False
         mix_fname = None
     if output_format not in ['svm', 'txt']:
-        print("INPUT ERROR: wrong output format specified - %s. On;y txt or svm are allowed." % output_format)
+        print("INPUT ERROR: wrong output format specified - %s. Only txt or svm are allowed." % output_format)
         exit()
     if min_num_atoms > max_num_atoms:
         print("INPUT ERROR: min_num_atoms should not be greater than max_num_atoms.")
@@ -560,10 +559,11 @@ def main():
         print("INPUT ERROR: min_num_mix_components should not be greater than max_num_mix_components and "
               "minimal value of min_num_mix_components should be 2 or greater.")
         exit()
-    if min_num_mix_components > max_num_components:
-        print("INPUT ERROR: minimal number of mixture components (min_num_mix_components) cannot be greater than "
-              "maximal number of components in a fragment descriptor (min_num_components).")
-        exit()
+    if quasimix or mix_fname is not None or in_fname.split('.')[-1] in ['rdf', 'rxn']:
+        if min_num_mix_components > max_num_components:
+            print("INPUT ERROR: minimal number of mixture components (min_num_mix_components) cannot be greater than "
+                  "maximal number of components in a fragment descriptor (min_num_components).")
+            exit()
     if mix_type not in ['abs', 'rel']:
         print("INPUT ERROR: mixture type (mix_type) can be only abs or rel.")
         exit()

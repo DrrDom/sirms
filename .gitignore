@@ -1,7 +1,6 @@
 __pycache__
 .idea
 *.pyc
-utilities
 indigo
 tests
 manual/sirms_manual.docs
