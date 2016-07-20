@@ -445,12 +445,12 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
 def main():
     parser = argparse.ArgumentParser(description='Calculate simplex descriptors for single molecules, quasi-mixtures, '
                                                  'mixtures and reactions.')
-    parser.add_argument('-i', '--in', metavar='input.sdf', required=True,
+    parser.add_argument('-i', '--in', metavar='input.sdf', required=False, default=None,
                         help='input file (allowed formats: sdf, rdf, rxn) with standardized structures, '
                              'molecules or reactions should have titles.')
-    parser.add_argument('-o', '--out', metavar='output.txt', required=True,
+    parser.add_argument('-o', '--out', metavar='output.txt', required=False, default=None,
                         help='output file with calculated descriptors. Can be in text or sparse svm format.')
-    parser.add_argument('-b', '--output_format', metavar='format_name', default='txt',
+    parser.add_argument('-b', '--output_format', metavar='output_format', default='txt',
                         help='format of output file with calculated descriptors (txt|svm). '
                              'Txt is ordinary tab-separated text file. Svm is sparse format, two additional files will '
                              'be saved with extensions .colnames and .rownames. Default: txt.')
@@ -515,6 +515,8 @@ def main():
                         help='field name of unique ID for compounds (sdf) or reactions (rdf/rxn). '
                              'If omitted for sdf molecule titles will be used or auto-generated names; '
                              'for rdf $RIREG/$REREG/$MIREG/$MEREG field if it is not empty or auto-generated names')
+    parser.add_argument('--version', action='store_true', default=False,
+                        help='print the version of the program and exit.')
 
     args = vars(parser.parse_args())
     opt_mix_ordered = None
@@ -540,6 +542,20 @@ def main():
         if o == "descriptors_transformation": descriptors_transformation = v
         if o == "mix_type": mix_type = v
         if o == "reaction_diff": reaction_diff = v
+        if o == "version": version = v
+
+    if version:
+        print('version 1.0.0')
+        exit()
+
+    if not version:
+        if in_fname is None:
+            print("Please specify the input file.")
+            exit()
+        if out_fname is None:
+            print("Please specify the output file.")
+            exit()
+
     if quasimix:
         opt_mix_ordered = False
         mix_fname = None
