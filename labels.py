@@ -51,14 +51,17 @@ uff_energy = {'H': 0.044, 'He': 0.056, 'Li': 0.025, 'Be': 0.085, 'B': 0.18, 'C':
 
 builtin_types = ('elm', 'none', 'uffd', 'uffe')
 
+builtin_continuous_types = ('uffd', 'uffe')
+
 
 def SetLabelsInternal(mols, opt_diff, setup_path):
 
     ranges = dict()
     for diff in opt_diff:
-        range = ReadPropertyRange(setup_path, diff)
-        if ranges is not None:
-            ranges[diff] = range
+        if diff in builtin_continuous_types:
+            range = ReadPropertyRange(setup_path, diff)
+            if ranges is not None:
+                ranges[diff] = range
 
     for mol in mols.values():
         for atom in mol.atoms.values():

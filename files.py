@@ -41,6 +41,10 @@ def ReadPropertyRange(file_setup_name, prop_name):
             res = list(map(float, line.strip().split('=')[1].split('<')))
             break
     f.close()
+    if res is None:
+        print("Chosen atomic property values (%s) requires discretization on bins according to ranges specified in "
+              "the setup.txt." % prop_name)
+        exit()
     return (res)
 
 
