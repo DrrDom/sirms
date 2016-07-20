@@ -1,5 +1,5 @@
-!relative ratio
 ethanol	acetone	1	1
 n-butanol	acetone	1	2
 i-propanol	butanone-2	1	3
 i-propanol	cyclopentanone	2	1
+i-propanol	cyclopentanone	butanone-2	2	1	1

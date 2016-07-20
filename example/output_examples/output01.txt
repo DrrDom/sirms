@@ -1,0 +1,7 @@
+Compounds	|S|n|||4|||elm|C(-C-H)-H	|S|n|||4|||elm|C(-C-O)-H	|S|n|||4|||elm|C(-C=O)-H	|S|n|||4|||elm|C(-H)(-H)-H	|S|n|||4|||elm|C(-H)(-H)-O	|S|n|||4|||elm|C(-H)-H.H	|S|n|||4|||elm|C(-H)-H.O	|S|n|||4|||elm|C(-H)-O-H	|S|n|||4|||elm|C(-H)-O.H	|S|n|||4|||elm|C-C(-C)-H	|S|n|||4|||elm|C-C(-C)-O	|S|n|||4|||elm|C-C(-C)=O	|S|n|||4|||elm|C-C(-H)-H	|S|n|||4|||elm|C-C(-H)-O	|S|n|||4|||elm|C-C-C-C	|S|n|||4|||elm|C-C-C-H	|S|n|||4|||elm|C-C-C-O	|S|n|||4|||elm|C-C-C.H	|S|n|||4|||elm|C-C-C.O	|S|n|||4|||elm|C-C-C=O	|S|n|||4|||elm|C-C-H.H	|S|n|||4|||elm|C-C-H.O	|S|n|||4|||elm|C-C-O-H	|S|n|||4|||elm|C-C-O.H	|S|n|||4|||elm|C-C.C-H	|S|n|||4|||elm|C-C.C-O	|S|n|||4|||elm|C-C.C=O	|S|n|||4|||elm|C-C.H-O	|S|n|||4|||elm|C-C=O.H	|S|n|||4|||elm|C-H.C-H	|S|n|||4|||elm|C-H.C-O	|S|n|||4|||elm|C-H.C=O	|S|n|||4|||elm|C-H.H-O	|S|n|||4|||elm|C-O-H.H	|S|n|||4|||elm|C.C(-H)-H	|S|n|||4|||elm|C.C(-H)-O	|S|n|||4|||elm|C.C-C-H	|S|n|||4|||elm|C.C-C-O	|S|n|||4|||elm|C.C-C=O	|S|n|||4|||elm|C.C-O-H
+ethanol	6	3	0	1	1	13	3	2	6	0	0	0	4	2	0	0	0	0	0	0	5	0	1	0	0	0	0	0	0	0	0	0	3	3	0	0	0	0	0	0
+n-butanol	14	2	0	1	1	45	5	2	14	4	0	0	8	2	1	9	1	7	1	0	73	9	1	5	5	1	0	2	0	16	5	0	7	7	10	4	9	1	0	2
+i-propanol	6	6	0	2	0	30	6	1	6	1	1	0	6	2	0	6	0	1	0	0	32	0	2	6	0	0	0	0	0	9	0	0	6	6	6	0	0	0	0	0
+acetone	0	0	6	2	0	18	6	0	0	0	0	1	6	0	0	6	0	0	0	0	18	0	0	0	0	0	0	0	6	9	0	0	0	0	6	0	0	0	0	0
+butanone-2	6	0	5	2	0	36	7	0	0	2	0	1	8	0	1	8	0	6	0	1	42	5	0	0	6	0	0	0	11	15	0	3	0	0	13	0	8	0	1	0
+cyclopentanone	12	0	4	0	0	24	4	0	0	8	0	1	8	0	5	16	0	16	2	2	72	12	0	0	8	0	1	0	12	12	0	4	0	0	8	0	16	0	2	0
