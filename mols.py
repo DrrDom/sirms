@@ -218,14 +218,14 @@ class SmilesMol3(Mol4):
 
     def __get_feature_signatures(self, ids, labels):
         feature_signatures = []
-        for num_i, i in enumerate(ids):
+        for i, label_i in zip(ids, labels):
             sign = []
-            for num_j, j in enumerate(ids):
+            for j, label_j in zip(ids, labels):
                 if i != j:
-                    bond_order = self.GetBondOrder(ids[num_i], ids[num_j])
+                    bond_order = self.GetBondOrder(i, j)
                     if bond_order > 0:
-                        sign.append((labels[num_j], self.GetBondOrder(ids[num_i], ids[num_j])))
-            feature_signatures.append((labels[num_i],) + tuple(sorted(sign)))
+                        sign.append((label_j, bond_order))
+            feature_signatures.append((label_i,) + tuple(sorted(sign)))
         return tuple(feature_signatures)
 
     def __getRanks(self, sub, labels):
