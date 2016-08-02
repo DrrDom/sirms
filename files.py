@@ -15,6 +15,12 @@ from ppgfunctions import GetFileNameNoExt, GetWorkDir
 from collections import OrderedDict
 
 
+def GetAtomPropertyFromSetup(setup_fname):
+    with open(setup_fname) as f:
+        output = [line.strip().split('=')[0] for line in f]
+    return output
+
+
 def NotExistedPropertyFiles(opt_diff, input_fname):
     """
     Checks property files existence and returns names of not existed property files,
@@ -41,11 +47,7 @@ def ReadPropertyRange(file_setup_name, prop_name):
             res = list(map(float, line.strip().split('=')[1].split('<')))
             break
     f.close()
-    if res is None:
-        print("Chosen atomic property values (%s) requires discretization on bins according to ranges specified in "
-              "the setup.txt." % prop_name)
-        exit()
-    return (res)
+    return res
 
 
 def RangedLetter(value, prop_range, none_label="NA"):
@@ -91,9 +93,6 @@ def LoadRangedProperty(mols, setup_dir, prop_fname):
 
     prop_name = os.path.splitext(os.path.basename(prop_fname))[1][1:]
     prop_range = ReadPropertyRange(os.path.join(setup_dir, 'setup.txt'), prop_name)
-    if prop_range is None:
-        print('Cannot find "%s" property in setup.txt' % prop_name)
-        exit()
     # read property file
     d = ReadPropertyFile(os.path.join(setup_dir, prop_fname))
     # assign property values to atoms

@@ -375,6 +375,14 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
     # load sdf, rdf or rxn file depending on its extension
     input_file_extension = in_fname.strip().split(".")[-1].lower()
     setup_path = os.path.join(GetWorkDir(in_fname), "setup.txt")
+
+    # check all properties are present in setup
+    not_avail = set(opt_diff_sdf).difference(files.GetAtomPropertyFromSetup(setup_path))
+    if not_avail:
+        for v in not_avail:
+            print("WARNING. Chosen atomic property values (%s) is absent in setup.txt file. "
+                  "Therefore its values will used as categorical variable ('as is') for atom labeling." % v)
+
     if input_file_extension == 'sdf':
         mols = ReadSDF(in_fname, id_field_name, opt_diff_sdf, setup_path)
     elif input_file_extension == 'rdf':
