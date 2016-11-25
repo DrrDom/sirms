@@ -2,6 +2,7 @@ __pycache__
 .idea
 *.pyc
 indigo
+rdkit
 manual
 tests
 manual/sirms_manual.docs
