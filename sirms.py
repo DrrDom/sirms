@@ -313,6 +313,17 @@ def GenQuasiMix(mol_names):
 
 #===============================================================================
 
+def GenPerAtomFragments(mols):
+    d = dict()
+    for mol in mols.values():
+        d[mol.title] = dict()
+        for i in range(len(mol.atoms)):
+            d[mol.title]["%i#%i" % (i+1, i)] = [i + 1]
+    print(d)
+    return d
+
+#===============================================================================
+
 def CalcReactionDiffSirms(sirms):
 
     def calc_diff(d):
@@ -365,7 +376,8 @@ def CalcProbSirms(sirms, type):
 def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min_num_components,
                 max_num_components, min_num_mix_components, max_num_mix_components, mix_fname,
                 descriptors_transformation, mix_type, opt_mix_ordered, opt_verbose, opt_noH,
-                frag_fname, self_association_mix, reaction_diff, quasimix, id_field_name, output_format):
+                frag_fname, per_atom_fragments, self_association_mix, reaction_diff, quasimix, id_field_name,
+                output_format):
 
     # define which property will be loaded from external file or from sdf-file
     opt_diff_builtin = [v for v in opt_diff if v in builtin_types]
@@ -401,7 +413,7 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
 
     if mix_fname is None and not quasimix and input_file_extension == 'sdf':
 
-        frags = files.LoadFragments(frag_fname)
+        frags = files.LoadFragments(frag_fname) if not per_atom_fragments else GenPerAtomFragments(mols)
         # calc simplex descriptors
         sirms = CalcSingleSirms(mols.values(), opt_diff, min_num_atoms, max_num_atoms, min_num_components,
                                 max_num_components, opt_noH, opt_verbose, frags)
@@ -519,6 +531,9 @@ def main():
     parser.add_argument('-f', '--fragments', metavar='fragments.txt', default=None,
                         help='text file containing list of names of single compounds, fragment names and atom '
                              'indexes of fragment to remove (all values are tab-separated).')
+    parser.add_argument('--per_atom_fragments', action='store_true', default=False,
+                        help='if set this flag input fragments will be omitted and single atoms will be considered '
+                             'as fragments.')
     parser.add_argument('-w', '--id_field_name', metavar='field_name', default=None,
                         help='field name of unique ID for compounds (sdf) or reactions (rdf/rxn). '
                              'If omitted for sdf molecule titles will be used or auto-generated names; '
@@ -537,6 +552,7 @@ def main():
         if o == "verbose": opt_verbose = v
         if o == "noH": opt_noH = v
         if o == "fragments": frag_fname = v
+        if o == "per_atom_fragments": per_atom_fragments = v
         if o == "quasi_mix": quasimix = v
         if o == "id_field_name": id_field_name = v
         if o == "output_format": output_format = v
@@ -614,6 +630,7 @@ def main():
                 opt_verbose=opt_verbose,
                 opt_noH=opt_noH,
                 frag_fname=frag_fname,
+                per_atom_fragments=per_atom_fragments,
                 self_association_mix=self_association_mix,
                 reaction_diff=reaction_diff,
                 quasimix=quasimix,
