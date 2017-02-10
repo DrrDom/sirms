@@ -382,7 +382,7 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
     # define which property will be loaded from external file or from sdf-file
     opt_diff_builtin = [v for v in opt_diff if v in builtin_types]
     opt_diff_sdf = files.NotExistedPropertyFiles([v for v in opt_diff if v not in opt_diff_builtin], in_fname)
-    opt_diff_ext = [el for el in opt_diff if el not in opt_diff_sdf and el not in opt_diff_builtin]
+    # opt_diff_ext = [el for el in opt_diff if el not in opt_diff_sdf and el not in opt_diff_builtin]
 
     # load sdf, rdf or rxn file depending on its extension
     input_file_extension = in_fname.strip().split(".")[-1].lower()
@@ -396,7 +396,9 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
                   "Therefore its values will used as categorical variable ('as is') for atom labeling." % v)
 
     if input_file_extension == 'sdf':
-        mols = ReadSDF(in_fname, id_field_name, opt_diff_sdf, setup_path)
+        mols = OrderedDict()
+        for m in ReadSDF(in_fname, id_field_name, opt_diff_sdf, setup_path):
+            mols[m.title] = m
     elif input_file_extension == 'rdf':
         mols, mix = ReadRDF(in_fname, id_field_name)
     elif input_file_extension == 'rxn':
@@ -407,7 +409,7 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
         return None
 
     # set property labels on atoms from external data files
-    SetLabelsExternal(mols, opt_diff_ext, in_fname)
+    # SetLabelsExternal(mols, opt_diff_ext, in_fname)
     # set labels of built-in types
     SetLabelsInternal(mols, opt_diff_builtin, setup_path)
 
@@ -569,7 +571,7 @@ def main():
         if o == "version": version = v
 
     if version:
-        print('version 1.0.0')
+        print('version 1.1.0+')
         exit()
 
     if not version:

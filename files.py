@@ -36,17 +36,18 @@ def NotExistedPropertyFiles(opt_diff, input_fname):
 
 
 def ReadPropertyRange(file_setup_name, prop_name):
+    res = None
     try:
         f = open(file_setup_name)
+        for line in f:
+            if prop_name == line.split('=')[0]:
+                res = list(map(float, line.strip().split('=')[1].split('<')))
+                break
     except FileNotFoundError:
         print('File setup.txt cannot be found in the folder containing input sdf file.')
         exit()
-    res = None
-    for line in f:
-        if prop_name == line.split('=')[0]:
-            res = list(map(float, line.strip().split('=')[1].split('<')))
-            break
-    f.close()
+    else:
+        f.close()
     return res
 
 

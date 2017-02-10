@@ -157,17 +157,16 @@ def ReadSDF(fname, id_field_name, opt_diff, fsetup, parse_stereo=False):
 
         return mol
 
-    mols = OrderedDict()
     molstr = []
+    i = 0
     with open(fname) as f:
         for line in f:
             if line.rstrip() != "$$$$":
                 molstr.append(line.rstrip())
             else:
-                m = _MolstrToMol(molstr, id_field_name, opt_diff, parse_stereo, len(mols) + 1)
-                mols[m.title] = m
+                i += 1
+                yield _MolstrToMol(molstr, id_field_name, opt_diff, parse_stereo, i)
                 molstr = []
-    return mols
 
 
 def get_rdf_field(rxn, field_name):
