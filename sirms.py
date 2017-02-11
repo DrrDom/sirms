@@ -412,10 +412,10 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
         saver = files.SvmSaver(out_fname)
 
         try:
-            for result in p.imap(MapCalcMolSingleSirms, prep_input(in_fname, id_field_name, opt_diff, opt_diff_sdf,
-                                                                   setup_path, min_num_atoms, max_num_atoms,
-                                                                   min_num_components, max_num_components,
-                                                                   opt_noH, opt_verbose, per_atom_fragments, frags),
+            for result in p.imap(MapCalcMolSingleSirms,
+                                 prep_input(in_fname, id_field_name, opt_diff, opt_diff_sdf, setup_path, min_num_atoms,
+                                            max_num_atoms, min_num_components, max_num_components, opt_noH,
+                                            opt_verbose, per_atom_fragments, frags),
                                  chunksize=10):
                 for mol_name, descr_dict in result.items():
                     saver.save_mol_descriptors(mol_name, descr_dict)
