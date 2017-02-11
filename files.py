@@ -15,24 +15,77 @@ from ppgfunctions import GetFileNameNoExt, GetWorkDir
 from collections import OrderedDict
 
 
+class SvmSaver:
+
+    def __init__(self, file_name):
+        self.__fname = file_name
+        self.__varnames_fname = os.path.splitext(file_name)[0] + '.colnames'
+        self.__molnames_fname = os.path.splitext(file_name)[0] + '.rownames'
+        self.__varnames = []
+        # self.__molnames = []
+        try:
+            os.remove(self.__fname)
+            os.remove(self.__molnames_fname)
+            os.remove(self.__varnames_fname)
+        except OSError:
+            pass
+
+    def __convert_value(self, value):
+        if type(value) is int or value.is_integer():
+            res = str(int(value))
+        elif isinstance(value, float):
+            res = "{:.5f}".format(value)
+        else:
+            res = str(value)
+        return res
+
+    def save_mol_descriptors(self, mol_name, mol_descr_dict):
+
+        values = []
+
+        for i, varname in enumerate(self.__varnames):
+            if varname in mol_descr_dict:
+                value = self.__convert_value(mol_descr_dict[varname])
+                values.append((i, value))
+
+        new_varnames = list(set(mol_descr_dict) - set(self.__varnames))
+        for i, varname in enumerate(new_varnames):
+            value = self.__convert_value(mol_descr_dict[varname])
+            values.append((len(self.__varnames) + i, value))
+
+        self.__varnames.extend(new_varnames)
+
+        with open(self.__molnames_fname, 'at') as f:
+            f.write(mol_name + '\n')
+
+        if new_varnames:
+            with open(self.__varnames_fname, 'at') as f:
+                f.write('\n'.join(new_varnames) + '\n')
+
+        with open(self.__fname, 'at') as f:
+            values = sorted(values)
+            values = ('%i:%s' % (i, v) for i, v in values)
+            f.write(' '.join(values) + '\n')
+
+
 def GetAtomPropertyFromSetup(setup_fname):
     with open(setup_fname) as f:
         output = [line.strip().split('=')[0] for line in f]
     return output
 
 
-def NotExistedPropertyFiles(opt_diff, input_fname):
-    """
-    Checks property files existence and returns names of not existed property files,
-    these properties will be loaded from the initial sdf file
-    """
-    output = []
-    for s_diff in opt_diff:
-        if s_diff not in ["elm", "none"]:   # built-in types are ignored
-            if not os.path.isfile(os.path.join(GetWorkDir(input_fname),
-                                               GetFileNameNoExt(input_fname) + '.' + s_diff)):
-                output.append(s_diff)
-    return (output)
+# def NotExistedPropertyFiles(opt_diff, input_fname):
+#     """
+#     Checks property files existence and returns names of not existed property files,
+#     these properties will be loaded from the initial sdf file
+#     """
+#     output = []
+#     for s_diff in opt_diff:
+#         if s_diff not in ["elm", "none", "uffd", "uffe"]:   # built-in types are ignored
+#             if not os.path.isfile(os.path.join(GetWorkDir(input_fname),
+#                                                GetFileNameNoExt(input_fname) + '.' + s_diff)):
+#                 output.append(s_diff)
+#     return (output)
 
 
 def ReadPropertyRange(file_setup_name, prop_name):

@@ -20,9 +20,10 @@ import files
 import copy
 from itertools import combinations, chain, product, combinations_with_replacement
 from collections import OrderedDict
+from multiprocessing import Pool, cpu_count
 
 from sdf import ReadSDF, ReadRDF, ReadRXN
-from labels import SetLabelsInternal, builtin_types
+from labels import SetLabelsInternal, builtin_types, GetSetupRanges, SetLabelsInternalToMol
 from ppgfunctions import *
 import sirms_name
 
@@ -137,13 +138,32 @@ def concat_reaction_sirms(sirms):
 #===============================================================================
 # SIRMS
 
-def SetLabelsExternal(mols, opt_diff, input_fname):
-    for s_diff in opt_diff:
-        files.LoadRangedProperty(mols, GetWorkDir(input_fname), GetFileNameNoExt(input_fname) + '.' + s_diff)
+def prep_input(in_fname, id_field_name, opt_diff, opt_diff_sdf, setup_path, min_num_atoms, max_num_atoms,
+               min_num_components, max_num_components, noH, verbose, per_atom_fragments, frags):
+
+    ranges = GetSetupRanges(opt_diff, setup_path)
+
+    for mol in ReadSDF(in_fname, id_field_name, opt_diff_sdf, setup_path):
+
+        # get part of a frag dict for the current mol
+        mol_frag = dict()
+        if frags is not None and mol.title in frags:
+            mol_frag.update(frags[mol.title])
+        if per_atom_fragments:
+            mol_frag.update(GetPerAtomMolFragments(mol))
+
+        # set internal labels (labels from SDF automatically loaded)
+        SetLabelsInternalToMol(mol, opt_diff, ranges)
+
+        yield mol, opt_diff, min_num_atoms, max_num_atoms, min_num_components, max_num_components, noH, verbose, mol_frag
+
+
+def MapCalcMolSingleSirms(args):
+    return CalcMolSingleSirms(*args)
 
 
 def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_components,
-                       max_num_components, noH, verbose, frags=None):
+                       max_num_components, noH, verbose, frags_dict):
     """
     INPUT:
         mol: Mol3 object;
@@ -164,14 +184,14 @@ def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_com
     if verbose:
         cur_time = time.time()
 
+    # prepare output dict
     d = {mol.title: {}}
-    if frags is not None:
-        local_frags = frags.get(mol.title, None)
-        if local_frags is not None:
-            for frag in local_frags.keys():
-                d[frag] = {}
+    if frags_dict:
+        local_frags_dict = {mol.title + mol_frag_sep + k: v for k, v in frags_dict.items()}
+        for full_frag_name in local_frags_dict:
+            d[full_frag_name] = {}
     else:
-        local_frags = None
+        local_frags_dict = None
 
     for a in mol.GetAtomsCombinations(min_num_components=min_num_components, max_num_components=max_num_components,
                                       min_num_atoms=min_num_atoms, max_num_atoms=max_num_atoms, noH=noH):
@@ -184,25 +204,16 @@ def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_com
                                                      smiles=mol.get_name(a, labels_set))
                 # sirms_name = 'S|' + s_diff + '|' + mol.get_name(a, labels_set)
                 d[mol.title][s_name] = d[mol.title].get(s_name, 0) + 1
-                if local_frags is not None:
+                if local_frags_dict:
                     # if there is no common atoms in simplex and fragment
-                    for frag in local_frags.keys():
-                        if set(a).isdisjoint(local_frags[frag]):
-                            d[frag][s_name] = d[frag].get(s_name, 0) + 1
-
-    # rename frags in output dict
-    output = {}
-    for n in d.keys():
-        if n == mol.title:
-            output[mol.title] = d[n]
-        else:
-            output[mol.title + mol_frag_sep + n] = d[n]
-    del (d)
+                    for frag_name in local_frags_dict:
+                        if set(a).isdisjoint(local_frags_dict[frag_name]):
+                            d[frag_name][s_name] = d[frag_name].get(s_name, 0) + 1
 
     if verbose:
         print(mol.title, (str(round(time.time() - cur_time, 1)) + ' s').rjust(78 - len(mol.title)))
 
-    return output
+    return d
 
 
 #===============================================================================
@@ -313,13 +324,10 @@ def GenQuasiMix(mol_names):
 
 #===============================================================================
 
-def GenPerAtomFragments(mols):
+def GetPerAtomMolFragments(mol):
     d = dict()
-    for mol in mols.values():
-        d[mol.title] = dict()
-        for i in range(len(mol.atoms)):
-            d[mol.title]["%i#%i" % (i+1, i)] = [i + 1]
-    print(d)
+    for i in range(len(mol.atoms)):
+        d["%i#%i" % (i+1, i)] = [i + 1]
     return d
 
 #===============================================================================
@@ -377,12 +385,11 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
                 max_num_components, min_num_mix_components, max_num_mix_components, mix_fname,
                 descriptors_transformation, mix_type, opt_mix_ordered, opt_verbose, opt_noH,
                 frag_fname, per_atom_fragments, self_association_mix, reaction_diff, quasimix, id_field_name,
-                output_format):
+                output_format, ncores):
 
     # define which property will be loaded from external file or from sdf-file
     opt_diff_builtin = [v for v in opt_diff if v in builtin_types]
-    opt_diff_sdf = files.NotExistedPropertyFiles([v for v in opt_diff if v not in opt_diff_builtin], in_fname)
-    # opt_diff_ext = [el for el in opt_diff if el not in opt_diff_sdf and el not in opt_diff_builtin]
+    opt_diff_sdf = [v for v in opt_diff if v not in builtin_types]
 
     # load sdf, rdf or rxn file depending on its extension
     input_file_extension = in_fname.strip().split(".")[-1].lower()
@@ -395,32 +402,44 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
             print("WARNING. Chosen atomic property values (%s) is absent in setup.txt file. "
                   "Therefore its values will used as categorical variable ('as is') for atom labeling." % v)
 
-    if input_file_extension == 'sdf':
-        mols = OrderedDict()
-        for m in ReadSDF(in_fname, id_field_name, opt_diff_sdf, setup_path):
-            mols[m.title] = m
-    elif input_file_extension == 'rdf':
-        mols, mix = ReadRDF(in_fname, id_field_name)
-    elif input_file_extension == 'rxn':
-        mols, mix = ReadRXN(in_fname, id_field_name, opt_diff_sdf, setup_path)
-    else:
-        print("Input file extension should be SDF, RDF or RXN. Current file has %s. Please check it." %
-              input_file_extension.upper())
-        return None
-
-    # set property labels on atoms from external data files
-    # SetLabelsExternal(mols, opt_diff_ext, in_fname)
-    # set labels of built-in types
-    SetLabelsInternal(mols, opt_diff_builtin, setup_path)
-
     if mix_fname is None and not quasimix and input_file_extension == 'sdf':
 
-        frags = files.LoadFragments(frag_fname) if not per_atom_fragments else GenPerAtomFragments(mols)
-        # calc simplex descriptors
-        sirms = CalcSingleSirms(mols.values(), opt_diff, min_num_atoms, max_num_atoms, min_num_components,
-                                max_num_components, opt_noH, opt_verbose, frags)
+        frags = files.LoadFragments(frag_fname)
+
+        ncores = min(cpu_count(), max(ncores, 1))
+        p = Pool(ncores)
+
+        saver = files.SvmSaver(out_fname)
+
+        try:
+            for result in p.imap(MapCalcMolSingleSirms, prep_input(in_fname, id_field_name, opt_diff, opt_diff_sdf,
+                                                                   setup_path, min_num_atoms, max_num_atoms,
+                                                                   min_num_components, max_num_components,
+                                                                   opt_noH, opt_verbose, per_atom_fragments, frags),
+                                 chunksize=10):
+                for mol_name, descr_dict in result.items():
+                    saver.save_mol_descriptors(mol_name, descr_dict)
+        finally:
+            p.close()
 
     else:
+
+        # read input
+        if input_file_extension == 'sdf':
+            mols = OrderedDict()
+            for m in ReadSDF(in_fname, id_field_name, opt_diff_sdf, setup_path):
+                mols[m.title] = m
+        if input_file_extension == 'rdf':
+            mols, mix = ReadRDF(in_fname, id_field_name)
+        elif input_file_extension == 'rxn':
+            mols, mix = ReadRXN(in_fname, id_field_name, opt_diff_sdf, setup_path)
+        else:
+            print("Input file extension should be SDF, RDF or RXN. Current file has %s. Please check it." %
+                  input_file_extension.upper())
+            return None
+
+        # set labels of built-in types
+        SetLabelsInternal(mols, opt_diff_builtin, setup_path)
 
         # create mix data for sdf (for rdf/rxn mix is created during file loading)
         if input_file_extension == 'sdf':
@@ -455,13 +474,13 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
         if input_file_extension in ['rdf', 'rxn']:
             sirms = concat_reaction_sirms(sirms)
 
-    if descriptors_transformation in ['prob', 'both']:
-        sirms = CalcProbSirms(sirms, descriptors_transformation)
+        if descriptors_transformation in ['prob', 'both']:
+            sirms = CalcProbSirms(sirms, descriptors_transformation)
 
-    if reaction_diff:
-        sirms = CalcReactionDiffSirms(sirms)
+        if reaction_diff:
+            sirms = CalcReactionDiffSirms(sirms)
 
-    SaveSimplexes(out_fname, sirms, output_format)
+        SaveSimplexes(out_fname, sirms, output_format)
 
 
 def main():
@@ -542,6 +561,9 @@ def main():
                              'for rdf $RIREG/$REREG/$MIREG/$MEREG field if it is not empty or auto-generated names')
     parser.add_argument('--version', action='store_true', default=False,
                         help='print the version of the program and exit.')
+    parser.add_argument('-c', '--ncores', metavar='number_of_cores', default=1,
+                        help='number of cores used for calculation of descriptors for single molecules only. '
+                             'Output format will be set to svm automatically.')
 
     args = vars(parser.parse_args())
     opt_mix_ordered = None
@@ -569,6 +591,7 @@ def main():
         if o == "mix_type": mix_type = v
         if o == "reaction_diff": reaction_diff = v
         if o == "version": version = v
+        if o == "ncores": ncores = int(v)
 
     if version:
         print('version 1.1.0+')
@@ -637,7 +660,8 @@ def main():
                 reaction_diff=reaction_diff,
                 quasimix=quasimix,
                 id_field_name=id_field_name,
-                output_format=output_format)
+                output_format=output_format,
+                ncores=ncores)
 
 
 if __name__ == '__main__':
