@@ -321,7 +321,7 @@ def GenPerAtomFragments(mols, noH):
         for i in range(len(mol.atoms)):
             if noH and mol.atoms[i]["label"] == 'H':
                 continue
-            d[mol.title]["%i#%i" % (i+1, i)] = [i + 1]
+            d[mol.title]["%i#%i" % (i+1, counter)] = [i + 1]
             counter += 1
     return d
 
