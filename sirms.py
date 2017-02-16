@@ -313,13 +313,16 @@ def GenQuasiMix(mol_names):
 
 #===============================================================================
 
-def GenPerAtomFragments(mols):
+def GenPerAtomFragments(mols, noH):
     d = dict()
     for mol in mols.values():
         d[mol.title] = dict()
+        counter = 0
         for i in range(len(mol.atoms)):
+            if noH and mol.atoms[i]["label"] == 'H':
+                continue
             d[mol.title]["%i#%i" % (i+1, i)] = [i + 1]
-    print(d)
+            counter += 1
     return d
 
 #===============================================================================
@@ -413,7 +416,7 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
 
     if mix_fname is None and not quasimix and input_file_extension == 'sdf':
 
-        frags = files.LoadFragments(frag_fname) if not per_atom_fragments else GenPerAtomFragments(mols)
+        frags = files.LoadFragments(frag_fname) if not per_atom_fragments else GenPerAtomFragments(mols, opt_noH)
         # calc simplex descriptors
         sirms = CalcSingleSirms(mols.values(), opt_diff, min_num_atoms, max_num_atoms, min_num_components,
                                 max_num_components, opt_noH, opt_verbose, frags)
