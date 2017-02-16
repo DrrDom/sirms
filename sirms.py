@@ -21,6 +21,7 @@ import copy
 from itertools import combinations, chain, product, combinations_with_replacement
 from collections import OrderedDict
 from multiprocessing import Pool, cpu_count
+from threading import Semaphore
 
 from sdf import ReadSDF, ReadRDF, ReadRXN
 from labels import SetLabelsInternal, builtin_types, GetSetupRanges, SetLabelsInternalToMol
@@ -139,11 +140,13 @@ def concat_reaction_sirms(sirms):
 # SIRMS
 
 def prep_input(in_fname, id_field_name, opt_diff, opt_diff_sdf, setup_path, min_num_atoms, max_num_atoms,
-               min_num_components, max_num_components, noH, verbose, per_atom_fragments, frags):
+               min_num_components, max_num_components, noH, verbose, per_atom_fragments, frags, semaphore):
 
     ranges = GetSetupRanges(opt_diff, setup_path)
 
     for mol in ReadSDF(in_fname, id_field_name, opt_diff_sdf, setup_path):
+
+        semaphore.acquire()
 
         # get part of a frag dict for the current mol
         mol_frag = dict()
@@ -407,7 +410,8 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
         frags = files.LoadFragments(frag_fname)
 
         ncores = min(cpu_count(), max(ncores, 1))
-        p = Pool(ncores)
+        p = Pool(ncores, maxtasksperchild=3)
+        semaphore = Semaphore(ncores * 15)
 
         saver = files.SvmSaver(out_fname)
 
@@ -415,10 +419,12 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
             for result in p.imap(MapCalcMolSingleSirms,
                                  prep_input(in_fname, id_field_name, opt_diff, opt_diff_sdf, setup_path, min_num_atoms,
                                             max_num_atoms, min_num_components, max_num_components, opt_noH,
-                                            opt_verbose, per_atom_fragments, frags),
+                                            opt_verbose, per_atom_fragments, frags, semaphore),
                                  chunksize=10):
                 for mol_name, descr_dict in result.items():
                     saver.save_mol_descriptors(mol_name, descr_dict)
+                    semaphore.release()
+
         finally:
             p.close()
 
