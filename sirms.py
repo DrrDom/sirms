@@ -19,7 +19,7 @@ import time
 import files
 import copy
 from itertools import combinations, chain, product, combinations_with_replacement
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from multiprocessing import Pool, cpu_count
 from threading import Semaphore
 
@@ -188,11 +188,11 @@ def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_com
         cur_time = time.time()
 
     # prepare output dict
-    d = {mol.title: {}}
+    d = {mol.title: defaultdict(int)}
     if frags_dict:
-        local_frags_dict = {mol.title + mol_frag_sep + k: v for k, v in frags_dict.items()}
+        local_frags_dict = {mol.title + mol_frag_sep + k: set(v) for k, v in frags_dict.items()}
         for full_frag_name in local_frags_dict:
-            d[full_frag_name] = {}
+            d[full_frag_name] = defaultdict(int)
     else:
         local_frags_dict = None
 
@@ -206,15 +206,18 @@ def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_com
                                                      atom_count=len(a), atom_labeling=s_diff,
                                                      smiles=mol.get_name(a, labels_set))
                 # sirms_name = 'S|' + s_diff + '|' + mol.get_name(a, labels_set)
-                d[mol.title][s_name] = d[mol.title].get(s_name, 0) + 1
+                d[mol.title][s_name] += 1
                 if local_frags_dict:
                     # if there is no common atoms in simplex and fragment
+                    set_a = set(a)
                     for frag_name in local_frags_dict:
-                        if set(a).isdisjoint(local_frags_dict[frag_name]):
-                            d[frag_name][s_name] = d[frag_name].get(s_name, 0) + 1
+                        if set_a.isdisjoint(local_frags_dict[frag_name]):
+                            d[frag_name][s_name] += 1
 
     if verbose:
         print(mol.title, (str(round(time.time() - cur_time, 1)) + ' s').rjust(78 - len(mol.title)))
+
+    d = {k: dict(v) for k, v in d.items()}
 
     return d
 
@@ -411,20 +414,19 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
 
     if mix_fname is None and not quasimix and input_file_extension == 'sdf':
 
-        frags = files.LoadFragments(frag_fname)
-
         ncores = min(cpu_count(), max(ncores, 1))
-        p = Pool(ncores, maxtasksperchild=3)
-        semaphore = Semaphore(ncores * 15)
+        p = Pool(ncores)
+        semaphore = Semaphore(ncores * 5)
 
         saver = files.SvmSaver(out_fname)
+        frags = files.LoadFragments(frag_fname)
 
         try:
             for result in p.imap(MapCalcMolSingleSirms,
                                  prep_input(in_fname, id_field_name, opt_diff, opt_diff_sdf, setup_path, min_num_atoms,
                                             max_num_atoms, min_num_components, max_num_components, opt_noH,
                                             opt_verbose, per_atom_fragments, frags, semaphore),
-                                 chunksize=10):
+                                 chunksize=5):
                 for mol_name, descr_dict in result.items():
                     saver.save_mol_descriptors(mol_name, descr_dict)
                     semaphore.release()

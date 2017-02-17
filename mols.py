@@ -162,7 +162,7 @@ class Mol4(Mol3):
             for comb in combinations(range(len(res)), n):
                 # if min_num_atoms <= sum(len(res[i]) for i in comb) <= max_num_atoms and (len(comb) == 1 or not set.intersection(*[nb[i] for i in comb])):
                 if min_num_atoms <= sum(len(res[i]) for i in comb) <= max_num_atoms and (len(comb) == 1 or not CheckIntersection(res, nb, comb)):
-                    results.append(set.union(*[res[i] for i in comb]))
+                    results.append(tuple(set.union(*[res[i] for i in comb])))
 
         return results
 
