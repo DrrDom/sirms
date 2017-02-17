@@ -153,7 +153,7 @@ def prep_input(in_fname, id_field_name, opt_diff, opt_diff_sdf, setup_path, min_
         if frags is not None and mol.title in frags:
             mol_frag.update(frags[mol.title])
         if per_atom_fragments:
-            mol_frag.update(GetPerAtomMolFragments(mol))
+            mol_frag.update(GetPerAtomMolFragments(mol, noH))
 
         # set internal labels (labels from SDF automatically loaded)
         SetLabelsInternalToMol(mol, opt_diff, ranges)
