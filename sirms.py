@@ -330,8 +330,8 @@ def GenQuasiMix(mol_names):
 def GetPerAtomMolFragments(mol, noH):
     d = dict()
     counter = 0
-    for i in range(len(mol.atoms)):
-        if noH and mol.atoms[i]["label"] == 'H':
+    for i, a in enumerate(mol.atoms):
+        if noH and mol.atoms[a]["label"] == 'H':
             continue
         d["%i#%i" % (i+1, counter)] = [i + 1]
         counter += 1
