@@ -149,7 +149,7 @@ def prep_input(in_fname, id_field_name, opt_diff, opt_diff_sdf, setup_path, min_
         semaphore.acquire()
 
         # get part of a frag dict for the current mol
-        mol_frag = dict()
+        mol_frag = OrderedDict()
         if frags is not None and mol.title in frags:
             mol_frag.update(frags[mol.title])
         if per_atom_fragments:
@@ -161,12 +161,18 @@ def prep_input(in_fname, id_field_name, opt_diff, opt_diff_sdf, setup_path, min_
         yield mol, opt_diff, min_num_atoms, max_num_atoms, min_num_components, max_num_components, noH, verbose, mol_frag
 
 
+def prep_input_mix(mol_list, opt_diff, min_num_atoms, max_num_atoms, min_num_components, max_num_components,
+                   opt_noH, opt_verbose):
+    for mol in mol_list:
+        return mol, opt_diff, min_num_atoms, max_num_atoms, min_num_components, max_num_components, opt_noH, opt_verbose
+
+
 def MapCalcMolSingleSirms(args):
     return CalcMolSingleSirms(*args)
 
 
 def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_components,
-                       max_num_components, noH, verbose, frags_dict):
+                       max_num_components, noH, verbose, frags_dict=None):
     """
     INPUT:
         mol: Mol3 object;
@@ -188,9 +194,10 @@ def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_com
         cur_time = time.time()
 
     # prepare output dict
-    d = {mol.title: defaultdict(int)}
+    d = OrderedDict()
+    d[mol.title] = defaultdict(int)
     if frags_dict:
-        local_frags_dict = {mol.title + mol_frag_sep + k: set(v) for k, v in frags_dict.items()}
+        local_frags_dict = OrderedDict((mol.title + mol_frag_sep + k, set(v)) for k, v in frags_dict.items())
         for full_frag_name in local_frags_dict:
             d[full_frag_name] = defaultdict(int)
     else:
@@ -205,7 +212,6 @@ def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_com
                 s_name = sirms_name.create_full_name(prod_react='', single_mix='S', num_prob='n',
                                                      atom_count=len(a), atom_labeling=s_diff,
                                                      smiles=mol.get_name(a, labels_set))
-                # sirms_name = 'S|' + s_diff + '|' + mol.get_name(a, labels_set)
                 d[mol.title][s_name] += 1
                 if local_frags_dict:
                     # if there is no common atoms in simplex and fragment
@@ -217,7 +223,7 @@ def CalcMolSingleSirms(mol, diff_list, min_num_atoms, max_num_atoms, min_num_com
     if verbose:
         print(mol.title, (str(round(time.time() - cur_time, 1)) + ' s').rjust(78 - len(mol.title)))
 
-    d = {k: dict(v) for k, v in d.items()}
+    d = OrderedDict((k, dict(v)) for k, v in d.items())
 
     return d
 
@@ -331,7 +337,7 @@ def GenQuasiMix(mol_names):
 #===============================================================================
 
 def GetPerAtomMolFragments(mol, noH):
-    d = dict()
+    d = OrderedDict()
     counter = 0
     for i, a in enumerate(mol.atoms):
         if noH and mol.atoms[a]["label"] == 'H':
@@ -412,11 +418,13 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
             print("WARNING. Chosen atomic property values (%s) is absent in setup.txt file. "
                   "Therefore its values will used as categorical variable ('as is') for atom labeling." % v)
 
-    if mix_fname is None and not quasimix and input_file_extension == 'sdf':
+    # init pool of workers for calculation of single compounds
+    ncores = min(cpu_count(), max(ncores, 1))
+    p = Pool(ncores)
+    chunksize = 5
+    semaphore = Semaphore(ncores * chunksize)
 
-        ncores = min(cpu_count(), max(ncores, 1))
-        p = Pool(ncores)
-        semaphore = Semaphore(ncores * 5)
+    if mix_fname is None and not quasimix and input_file_extension == 'sdf':
 
         saver = files.SvmSaver(out_fname)
         frags = files.LoadFragments(frag_fname)
@@ -426,7 +434,7 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
                                  prep_input(in_fname, id_field_name, opt_diff, opt_diff_sdf, setup_path, min_num_atoms,
                                             max_num_atoms, min_num_components, max_num_components, opt_noH,
                                             opt_verbose, per_atom_fragments, frags, semaphore),
-                                 chunksize=5):
+                                 chunksize=chunksize):
                 for mol_name, descr_dict in result.items():
                     saver.save_mol_descriptors(mol_name, descr_dict)
                     semaphore.release()
@@ -465,10 +473,20 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
 
         mols_used = set(chain.from_iterable([m['names'] for m in mix.values()]))
 
+        sirms = OrderedDict()
+        try:
+            for result in p.imap(MapCalcMolSingleSirms,
+                                 prep_input_mix([mols[mol_name] for mol_name in mols_used], opt_diff, 1, max_num_atoms,
+                                                min_num_components, max_num_components, opt_noH, opt_verbose),
+                                 chunksize=chunksize):
+                sirms.update(result)
+        finally:
+            p.close()
+
         # min_num_atoms set to 1 to be able to generate mixtures
-        sirms = CalcSingleSirms([mols[mol_name] for mol_name in mols_used], opt_diff, 1,
-                                max_num_atoms, min_num_components, max_num_components, opt_noH,
-                                opt_verbose, None)
+        # sirms = CalcSingleSirms([mols[mol_name] for mol_name in mols_used], opt_diff, 1,
+        #                         max_num_atoms, min_num_components, max_num_components, opt_noH,
+        #                         opt_verbose, None)
 
         sirms = CalcMixSirms(single_sirms=sirms,
                              mix=mix,

@@ -221,12 +221,12 @@ def LoadFragments(fname):
     """
     if fname is None:
         return (None)
-    d = {}
+    d = OrderedDict()
     f = open(fname, 'rt')
     for line in f:
         tmp = line.strip().split("\t")
         if tmp[0] not in d.keys():
-            d[tmp[0]] = {}
+            d[tmp[0]] = OrderedDict()
         d[tmp[0]][tmp[1] + "#" + str(len(d[tmp[0]]))] = list(map(int, tmp[2:]))
     f.close()
     return (d)
