@@ -164,10 +164,13 @@ def prep_input(in_fname, id_field_name, opt_diff, opt_diff_sdf, setup_path, min_
 def prep_input_mix(mol_list, opt_diff, min_num_atoms, max_num_atoms, min_num_components, max_num_components,
                    opt_noH, opt_verbose):
     for mol in mol_list:
-        return mol, opt_diff, min_num_atoms, max_num_atoms, min_num_components, max_num_components, opt_noH, opt_verbose
+        print(mol.title, mol)
+        print(mol, opt_diff, min_num_atoms, max_num_atoms, min_num_components, max_num_components, opt_noH, opt_verbose)
+        yield mol, opt_diff, min_num_atoms, max_num_atoms, min_num_components, max_num_components, opt_noH, opt_verbose
 
 
 def MapCalcMolSingleSirms(args):
+    print(args)
     return CalcMolSingleSirms(*args)
 
 
@@ -449,7 +452,7 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
             mols = OrderedDict()
             for m in ReadSDF(in_fname, id_field_name, opt_diff_sdf, setup_path):
                 mols[m.title] = m
-        if input_file_extension == 'rdf':
+        elif input_file_extension == 'rdf':
             mols, mix = ReadRDF(in_fname, id_field_name)
         elif input_file_extension == 'rxn':
             mols, mix = ReadRXN(in_fname, id_field_name, opt_diff_sdf, setup_path)

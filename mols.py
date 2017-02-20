@@ -192,8 +192,8 @@ class SmilesMol3(Mol4):
             if i in strace:
                 if i not in stoplist:
                     # костыль для циклов. чтоб не было 2х проходов.
-                    self.nextnumb += 1
                     cyc = self.nextnumb
+                    self.nextnumb += 1
                     concat += [(i, cyc, inter)]
                     smi[0] += '%s%d' % (self.__tosmiles(self.GetBondOrder(inter, i)), cyc)
                 if b == iterlen and len(smi) > 3:
