@@ -624,7 +624,7 @@ def main():
         if o == "ncores": ncores = int(v)
 
     if version:
-        print('version 1.1.0+')
+        print('version 1.1.1')
         exit()
 
     if not version:
