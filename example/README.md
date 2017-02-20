@@ -11,7 +11,7 @@ Note: structures should be standardized first, because calculated descriptors ar
 `../sirms.py -i molecules.sdf -o output02.txt --min_atoms 2 --max_atoms 6 -x`  
   
 3. Calculated counts of fully connected fragments with 2 to 6 atoms labelled by element.  
-`./sirms.py -i molecules.sdf -o output03.txt --min_atoms 2 --max_atoms 6 --max_components 1`  
+`../sirms.py -i molecules.sdf -o output03.txt --min_atoms 2 --max_atoms 6 --max_components 1`  
   
 4. Calculate counts of fragments with 2 to 6 atoms labelled by element, partial atomic charge, lipophilicity, hydrogen bonding and refractivity and consisting of up to two disconnected parts.  
   

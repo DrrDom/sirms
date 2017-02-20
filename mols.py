@@ -156,23 +156,18 @@ class Mol4(Mol3):
         # get neighbours
         nb = [self.__GetAllNeighbours(v) for v in res]
 
+        results = []
+
         for n in range(min_num_components, max_num_components + 1):
             for comb in combinations(range(len(res)), n):
                 # if min_num_atoms <= sum(len(res[i]) for i in comb) <= max_num_atoms and (len(comb) == 1 or not set.intersection(*[nb[i] for i in comb])):
                 if min_num_atoms <= sum(len(res[i]) for i in comb) <= max_num_atoms and (len(comb) == 1 or not CheckIntersection(res, nb, comb)):
-                    yield tuple(set.union(*[res[i] for i in comb]))
+                    results.append(tuple(set.union(*[res[i] for i in comb])))
+
+        return results
 
 
 class SmilesMol3(Mol4):
-
-    primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107,
-              109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229,
-              233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317, 331, 337, 347, 349, 353, 359,
-              367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491,
-              499, 503, 509, 521, 523, 541, 547, 557, 563, 569, 571, 577, 587, 593, 599, 601, 607, 613, 617, 619, 631, 641,
-              643, 647, 653, 659, 661, 673, 677, 683, 691, 701, 709, 719, 727, 733, 739, 743, 751, 757, 761, 769, 773, 787,
-              797, 809, 811, 821, 823, 827, 829, 839, 853, 857, 859, 863, 877, 881, 883, 887, 907, 911, 919, 929, 937, 941,
-              947, 953, 967, 971, 977, 983, 991, 997, 1009]
 
     tosmileskeys = {0: '.', 1: '-', 2: '=', 3: '#', 4: ':', 8: '~'}
 
@@ -188,6 +183,8 @@ class SmilesMol3(Mol4):
         # get atom label
         smi = [labels_dict[inter]]
 
+        self.nextnumb = 1
+
         concat = []
         stoplist = []
         iterlen = len(iterlist) - 1
@@ -195,7 +192,8 @@ class SmilesMol3(Mol4):
             if i in strace:
                 if i not in stoplist:
                     # костыль для циклов. чтоб не было 2х проходов.
-                    cyc = next(self.nextnumb)
+                    cyc = self.nextnumb
+                    self.nextnumb += 1
                     concat += [(i, cyc, inter)]
                     smi[0] += '%s%d' % (self.__tosmiles(self.GetBondOrder(inter, i)), cyc)
                 if b == iterlen and len(smi) > 3:
@@ -237,69 +235,6 @@ class SmilesMol3(Mol4):
         s = sorted(signatures)
         return {atom: s.index(sign) for atom, sign in zip(sub, signatures)}
 
-
-    def __getWeininger(self, sub, labels):
-        """
-        modified morgan algorithm
-        init with prime numbers as weights according to labels
-        iteratively update weight by sum up with weight of neighbours multiplied by bond order
-        return: dict with atoms hash
-        """
-        a = sorted(set(labels))
-        init_weights = [a.index(lab) * 100000 for lab in labels]
-        for i, atom in enumerate(sub):
-            bond_orders = [self.GetBondOrder(atom, nei) for nei in self.bonds[atom].keys() if nei in sub]
-            c = Counter(bond_orders)
-            init_weights[i] = init_weights[i] + len(bond_orders) * 10000 + c[4] * 1000 + c[3] * 100 + c[2] * 10 + c[1]
-        # init_weights - label_rank, number_neighbours, number_bonds_1, number_bonds_2, number_bonds_3, number_bond_4 (aromatic)
-        a = sorted(set(init_weights))
-        ranks = [a.index(w) for w in init_weights]
-
-        # -1 to be always TRUE on the first iteration
-        previous_ranks_len = len(set(ranks)) - 1
-
-        while len(ranks) > len(set(ranks)) > previous_ranks_len:
-
-            previous_ranks_len = len(set(ranks))
-
-            primes = [self.primes[r] for r in ranks]
-
-            primes_product = []
-            for atom in sub:
-                p = 1
-                for nei in self.bonds[atom].keys():
-                    try:
-                        if nei in sub:
-                            p *= primes[sub.index(nei)]
-                    except ValueError:
-                        continue
-                primes_product.append(p)
-
-            # re-rank
-            new_ranks = [None] * len(sub)
-            # d = defaultdict(list)
-            d = dict()
-            for i, r in enumerate(ranks):
-                if r not in d.keys():
-                    d[r] = []
-                d[r].append(i)
-            curr_rank = 0
-            for i in sorted(d.keys()):
-                if len(d[i]) == 1:
-                    new_ranks[d[i][0]] = curr_rank
-                    curr_rank += 1
-                else:
-                    pp = [primes_product[j] for j in d[i]]
-                    a = sorted(set(pp))
-                    local_ranks = [a.index(p) for p in pp]
-                    for loc_r, j in zip(local_ranks, d[i]):
-                        new_ranks[j] = curr_rank + loc_r
-                    curr_rank += len(a)
-
-            ranks = list(new_ranks)
-
-        return {atom: rank for atom, rank in zip(sub, ranks)}
-
     def get_name(self, sub, labels):
 
         # if {10, 11, 12}.issubset(sub):
@@ -307,7 +242,7 @@ class SmilesMol3(Mol4):
         #     if set(sub).intersection([24, 20]):
         #         print(sub)
 
-        self.nextnumb = self.__numb()
+        # self.nextnumb = self.__numb()
         self.sub = set(sub)
         # self.levels = self.__getWeininger(sub, labels)
         self.levels = self.__getRanks(sub, labels)
@@ -326,9 +261,9 @@ class SmilesMol3(Mol4):
 
         return '.'.join(res)
 
-    def __numb(self):
-        i = 1
-        while True:
-            yield i
-            i += 1
+    # def __numb(self):
+    #     i = 1
+    #     while True:
+    #         yield i
+    #         i += 1
 

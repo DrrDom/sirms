@@ -54,24 +54,31 @@ builtin_types = ('elm', 'none', 'uffd', 'uffe')
 builtin_continuous_types = ('uffd', 'uffe')
 
 
-def SetLabelsInternal(mols, opt_diff, setup_path):
-
+def GetSetupRanges(opt_diff, setup_path):
     ranges = dict()
     for diff in opt_diff:
         if diff in builtin_continuous_types:
             range = ReadPropertyRange(setup_path, diff)
-            if ranges is not None:
+            if range is not None:
                 ranges[diff] = range
+    return ranges
 
+
+def SetLabelsInternalToMol(mol, opt_diff, setup_ranges):
+    for atom in mol.atoms.values():
+        if 'elm' in opt_diff:
+            atom['property']['elm'] = {'label': [atom['label']], 'value': atom['label']}
+        if 'none' in opt_diff:
+            atom['property']['none'] = {'label': ['A'], 'value': 'A'}
+        if 'uffd' in opt_diff:
+            value = uff_dist[atom['label']]
+            atom['property']['uffd'] = {'label': [RangedLetter(value, setup_ranges['uffd'])], 'value': value}
+        if 'uffe' in opt_diff:
+            value = uff_energy[atom['label']]
+            atom['property']['uffe'] = {'label': [RangedLetter(value, setup_ranges['uffe'])], 'value': value}
+
+
+def SetLabelsInternal(mols, opt_diff, setup_path):
+    ranges = GetSetupRanges(opt_diff, setup_path)
     for mol in mols.values():
-        for atom in mol.atoms.values():
-            if 'elm' in opt_diff:
-                atom['property']['elm'] = {'label': [atom['label']], 'value': atom['label']}
-            if 'none' in opt_diff:
-                atom['property']['none'] = {'label': ['A'], 'value': 'A'}
-            if 'uffd' in opt_diff:
-                value = uff_dist[atom['label']]
-                atom['property']['uffd'] = {'label': [RangedLetter(value, ranges['uffd'])], 'value': value}
-            if 'uffe' in opt_diff:
-                value = uff_energy[atom['label']]
-                atom['property']['uffe'] = {'label': [RangedLetter(value, ranges['uffe'])], 'value': value}
+        SetLabelsInternalToMol(mol, opt_diff, ranges)
