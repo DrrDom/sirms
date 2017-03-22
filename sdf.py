@@ -12,6 +12,7 @@
 
 import string
 import random
+import re
 from collections import OrderedDict
 
 from mols import SmilesMol3 as Mol
@@ -78,11 +79,11 @@ def get_sdf_field(sdf_lines, field_name):
 
     i = 0
 
-    field_strings = ['>  <' + field_name + '>', '> <' + field_name + '>']
+    patt = "^> +<%s>" % field_name
 
     # find field
     for i, line in enumerate(sdf_lines):
-        if line in field_strings:
+        if re.match(patt, line):
             break
 
     if i == len(sdf_lines) - 1:
