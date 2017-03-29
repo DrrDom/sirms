@@ -53,19 +53,21 @@ class SvmSaver:
             value = self.__convert_value(mol_descr_dict[varname])
             values.append((len(self.__varnames) + i, value))
 
-        self.__varnames.extend(new_varnames)
+        if values:  # values can be empty if all descriptors are zero
 
-        with open(self.__molnames_fname, 'at') as f:
-            f.write(mol_name + '\n')
+            self.__varnames.extend(new_varnames)
 
-        if new_varnames:
-            with open(self.__varnames_fname, 'at') as f:
-                f.write('\n'.join(new_varnames) + '\n')
+            with open(self.__molnames_fname, 'at') as f:
+                f.write(mol_name + '\n')
 
-        with open(self.__fname, 'at') as f:
-            values = sorted(values)
-            values = ('%i:%s' % (i, v) for i, v in values)
-            f.write(' '.join(values) + '\n')
+            if new_varnames:
+                with open(self.__varnames_fname, 'at') as f:
+                    f.write('\n'.join(new_varnames) + '\n')
+
+            with open(self.__fname, 'at') as f:
+                values = sorted(values)
+                values = ('%i:%s' % (i, v) for i, v in values)
+                f.write(' '.join(values) + '\n')
 
 
 def GetAtomPropertyFromSetup(setup_fname):
