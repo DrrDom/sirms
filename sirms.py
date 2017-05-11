@@ -10,7 +10,7 @@
 #
 # Created:     01.01.2013
 # Copyright:   (c) Pavel Polishchuk 2013-2015
-# Licence:     GPLv3
+# Licence:     BSD 3-clause
 # Python Version: 3.2
 #-------------------------------------------------------------------------------
 

@@ -46,7 +46,7 @@ You need to standardize your structures before simplex descriptors calculation.
 
 License
 -----
-GPLv3
+BSD 3-clause
 
 Reference
 -----
@@ -61,5 +61,5 @@ version 1.1.0 (26.07.2016)
 1) new canonicalization algorithm was implemented that changed descriptors names (break compatibility with older versions)
 
 version 1.1.1 (20.02.2017)
-1) multiprocessing calculation of descriptors was implemented for single molecules only that changed the output to svm format only (sparse format)
+1) multiprocessing calculation of descriptors was implemented for single molecules and svm output format only (sparse format)
 2) per atom fragmentation was added

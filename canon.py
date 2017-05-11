@@ -6,7 +6,7 @@
 #
 # Created:     11.01.2013
 # Copyright:   (c) Pavel Polishchuk 2013
-# Licence:     GPLv3
+# Licence:     BSD 3-clause
 #-------------------------------------------------------------------------------
 
 from itertools import combinations, permutations, chain, product

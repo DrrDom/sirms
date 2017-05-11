@@ -5,7 +5,7 @@
 # version         : 0.1
 # python_version  : 3
 # copyright       : Pavel Polishchuk 2016
-# license         : GPL3
+# license         : BSD 3-clause
 #==============================================================================
 
 from files import ReadPropertyRange, RangedLetter
