@@ -412,11 +412,12 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
     setup_path = os.path.join(GetWorkDir(in_fname), "setup.txt")
 
     # check all properties are present in setup
-    not_avail = set(opt_diff_sdf).difference(files.GetAtomPropertyFromSetup(setup_path))
-    if not_avail:
-        for v in not_avail:
-            print("WARNING. Chosen atomic property values (%s) is absent in setup.txt file. "
-                  "Therefore its values will used as categorical variable ('as is') for atom labeling." % v)
+    if opt_diff_sdf:
+        not_avail = set(opt_diff_sdf).difference(files.GetAtomPropertyFromSetup(setup_path))
+        if not_avail:
+            for v in not_avail:
+                print("WARNING. Chosen atomic property values (%s) is absent in setup.txt file. "
+                      "Therefore its values will used as categorical variable ('as is') for atom labeling." % v)
 
     # init pool of workers for calculation of single compounds
     ncores = min(cpu_count(), max(ncores, 1))
