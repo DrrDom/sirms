@@ -426,7 +426,12 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
 
     if mix_fname is None and not quasimix and input_file_extension == 'sdf':
 
-        saver = files.SvmSaver(out_fname)
+        saver = None
+        sirms = None
+        if output_format == "svm":
+            saver = files.SvmSaver(out_fname)
+        if output_format == "txt":
+            sirms = OrderedDict()
         frags = files.LoadFragments(frag_fname)
 
         try:
@@ -435,12 +440,18 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
                                             max_num_atoms, min_num_components, max_num_components, opt_noH,
                                             opt_verbose, per_atom_fragments, frags, semaphore),
                                  chunksize=chunksize):
-                for mol_name, descr_dict in result.items():
-                    saver.save_mol_descriptors(mol_name, descr_dict)
-                    semaphore.release()
+                if output_format == "txt":
+                    sirms.update(result)
+                if output_format == "svm":
+                    for mol_name, descr_dict in result.items():
+                        saver.save_mol_descriptors(mol_name, descr_dict)
+                        semaphore.release()
 
         finally:
             p.close()
+
+        if output_format == "txt":
+            SaveSimplexes(out_fname, sirms, output_format)
 
     else:
 
@@ -592,8 +603,7 @@ def main():
     parser.add_argument('--version', action='store_true', default=False,
                         help='print the version of the program and exit.')
     parser.add_argument('-c', '--ncores', metavar='number_of_cores', default=1,
-                        help='number of cores used for calculation of descriptors for single molecules only. '
-                             'Output format will be set to svm automatically.')
+                        help='number of cores used for calculation of descriptors for single molecules only.')
 
     args = vars(parser.parse_args())
     opt_mix_ordered = None
