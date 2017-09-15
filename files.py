@@ -23,12 +23,12 @@ class SvmSaver:
         self.__molnames_fname = os.path.splitext(file_name)[0] + '.rownames'
         self.__varnames = []
         # self.__molnames = []
-        try:
+        if os.path.isfile(self.__fname):
             os.remove(self.__fname)
+        if os.path.isfile(self.__molnames_fname):
             os.remove(self.__molnames_fname)
+        if os.path.isfile(self.__varnames_fname):
             os.remove(self.__varnames_fname)
-        except OSError:
-            pass
 
     def __convert_value(self, value):
         if type(value) is int or value.is_integer():
