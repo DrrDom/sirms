@@ -443,6 +443,7 @@ def main_params(in_fname, out_fname, opt_diff, min_num_atoms, max_num_atoms, min
                                  chunksize=chunksize):
                 if output_format == "txt":
                     sirms.update(result)
+                    semaphore.release()
                 if output_format == "svm":
                     for mol_name, descr_dict in result.items():
                         saver.save_mol_descriptors(mol_name, descr_dict)
