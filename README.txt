@@ -54,6 +54,7 @@ Reference
 2. Kuz’min, V. E.; Artemenko, A. G.; Muratov, E. N. Hierarchical QSAR technology based on the Simplex representation of molecular structure - Journal of Computer-Aided Molecular Design, 2008, Volume 22, Issue 6-7, 403-421. (single compounds representation)
 3. Oprisiu, I.; Varlamova, E.; Muratov, E.; Artemenko, A.; Marcou, G.; Polishchuk, P.; Kuz'min, V.; Varnek, A. QSPR Approach to Predict Nonadditive Properties of Mixtures. Application to Bubble Point Temperatures of Binary Mixtures of Liquids. Molecular Informatics 2012, 31, 491-502. (old approach of mixtures representation)
 4. Mokshyna, E.; Nedostup, V. I.; Polischuk, P. G.; Kuzmin, V. E. ‘Quasi-Mixture’ Descriptors for QSPR Analysis of Molecular Macroscopic Properties. The Critical Properties of Organic Compounds. Molecular Informatics 2014, 33, 647-654. (quasi-mixture representation)
+5. Polishchuk, P.; Madzhidov, T.; Gimadiev, T.; Bodrov, A.; Nugmanov, R.; Varnek, A. Structure–reactivity modeling using mixture-based representation of chemical reactions. J Comput Aided Mol Des 2017, 31 (9), 829-839 (reaction representation).
 
 Changes
 -----
