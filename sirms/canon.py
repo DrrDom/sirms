@@ -12,8 +12,8 @@
 from itertools import combinations, permutations, chain, product
 from collections import defaultdict
 from math import acos, sqrt, degrees
-from ppgfunctions import SortTwoLists
-import os, sys
+from .ppgfunctions import SortTwoLists
+import os
 import json
 
 # Global constants

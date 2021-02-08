@@ -16,17 +16,17 @@
 
 import argparse
 import time
-import files
 import copy
 from itertools import combinations, chain, product, combinations_with_replacement
 from collections import OrderedDict, defaultdict
 from multiprocessing import Pool, cpu_count
 from threading import Semaphore
 
-from sdf import ReadSDF, ReadRDF, ReadRXN
-from labels import SetLabelsInternal, builtin_types, GetSetupRanges, SetLabelsInternalToMol
-from ppgfunctions import *
-import sirms_name
+from . import files
+from . import sirms_name
+from .sdf import ReadSDF, ReadRDF, ReadRXN
+from .labels import SetLabelsInternal, builtin_types, GetSetupRanges, SetLabelsInternalToMol
+from .ppgfunctions import *
 
 mol_frag_sep = "###"
 

@@ -11,7 +11,7 @@
 
 import os
 from string import ascii_uppercase
-from ppgfunctions import GetFileNameNoExt, GetWorkDir
+from .ppgfunctions import GetFileNameNoExt, GetWorkDir
 from collections import OrderedDict
 
 

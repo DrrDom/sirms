@@ -10,13 +10,11 @@
 #-------------------------------------------------------------------------------
 
 
-import string
-import random
 import re
 from collections import OrderedDict
 
-from mols import SmilesMol3 as Mol
-from files import ReadPropertyRange, RangedLetter
+from .mols import SmilesMol3 as Mol
+from .files import ReadPropertyRange, RangedLetter
 
 
 formal_charges_table = {'0': 0,
