@@ -24,15 +24,15 @@ This version calculates only 2D descriptors.
 
 #### Usage
 Returns 2D simplex descriptors with vertexes labeled by element for single compounds  
-`sirms.py -in input.sdf -o output.txt`  
+`sirms -in input.sdf -o output.txt`  
 Returns 2D simplex descriptors with vertexes labeled by element for reactions  
-`sirms.py -in input.rdf -o output.txt`  
+`sirms -in input.rdf -o output.txt`  
 
 #### Help
 
-`sirms.py -h`
+`sirms -h`
 
-####Wiki
+#### Wiki
 
 See wiki pages for more information and examples - https://github.com/DrrDom/sirms/wiki.
 
@@ -66,3 +66,6 @@ version 1.2.0 (06.02.2021)
 
 version 1.2.1 (08.02.2021)
 - fix README formatting
+
+version 1.2.2 (12.04.2023)
+- fix examples in README
