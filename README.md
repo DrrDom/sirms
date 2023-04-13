@@ -69,3 +69,6 @@ version 1.2.1 (08.02.2021)
 
 version 1.2.2 (12.04.2023)
 - fix examples in README
+
+version 1.2.4 (13.04.2023)
+- fix import calc_atomic_properties_chemaxon
